@@ -65,4 +65,19 @@ Schemas for **Cassandra** and **Neo4j** are defined in `cql` and `cypher` respec
 > Keep in mind to do this **OUTSIDE** venv. Run `deactivate` if in .venv.
 
 
- 
+## GitHub collaboration
+ **LOCAL**
+1. `git checkout -b new-feature`
+2. Add changes + `git add -A ; git commit -m"Message" ; git push origin new-feature`
+
+**REMOTE**
+1. Create pull request
+2. Wait for approval
+3. Compare and rebase branch with master
+4. Delete new-feature branch
+
+**LOCAL**
+1. `git switch master`
+2. `git fetch origin master`
+3. `git rebase new-feature`
+4. `git branch -D new-feature`
