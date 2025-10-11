@@ -67,17 +67,15 @@ Schemas for **Cassandra** and **Neo4j** are defined in `cql` and `cypher` respec
 
 ## GitHub collaboration
  **LOCAL**
-1. `git checkout -b new-feature`
-2. Add changes + `git add -A ; git commit -m"Message" ; git push origin new-feature`
+1. `git fetch origin master` if there are changes on remote master
+2. `git checkout -b new-feature`
+3. Add changes + `git add -A ; git commit -m"Message" ; git push origin new-feature`
 
 **REMOTE**
-1. Create pull request
-2. Wait for approval
-3. Compare and rebase branch with master
-4. Delete new-feature branch
+1. Compare & pull request
+2. Compare and rebase branch with master
+3. Delete new-feature branch
 
 **LOCAL**
 1. `git switch master`
-2. `git fetch origin master`
-3. `git rebase new-feature`
-4. `git branch -D new-feature`
+2. `git pull origin master`
