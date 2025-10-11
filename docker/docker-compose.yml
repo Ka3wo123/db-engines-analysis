@@ -1,0 +1,45 @@
+services:
+  postgresql:
+    image: postgres:15
+    container_name: postgresql15
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: frauddb
+    volumes:
+      - ../sql/postgresql:/docker-entrypoint-initdb.d
+  mysql:
+    image: mysql:8
+    container_name: mysql8
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: mysqlrootpass
+      MYSQL_USER: mysql
+      MYSQL_PASSWORD: mysql
+      MYSQL_DATABASE: frauddb
+    volumes:
+      - ../sql/mysql:/docker-entrypoint-initdb.d
+  cassandra:
+    image: cassandra:4
+    container_name: cassandra4
+    ports:
+      - "9042:9042"
+    volumes:
+      - ../cql:/cql-init
+    environment:
+      - CASSANDRA_AUTHENTICATOR=PasswordAuthenticator
+      - CASSANDRA_AUTHORIZER=CassandraAuthorizer
+      - CASSANDRA_ROLE_MANAGER=CassandraRoleManager
+  neo4j:
+    image: neo4j:5
+    container_name: neo4j5
+    ports:
+      - "7474:7474" # HTTP
+      - "7687:7687" # BOLT
+    environment:
+      NEO4J_AUTH: neo4j/cg8&fhjs10LOz
+    volumes:
+      - ../cypher:/cypher-init
