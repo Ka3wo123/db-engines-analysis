@@ -65,6 +65,4 @@ Schemas for **Cassandra** and **Neo4j** are defined in `cql` and `cypher` respec
 > Keep in mind to do this **OUTSIDE** venv. Run `deactivate` if in .venv.
 
 
-Change just to check.
-
  
