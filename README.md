@@ -69,12 +69,13 @@ Schemas for **Cassandra** and **Neo4j** are defined in `cql` and `cypher` respec
  **LOCAL**
 1. `git fetch origin master` if there are changes on remote master
 2. `git checkout -b new-feature`
-3. Add changes + `git add -A ; git commit -m"Message" ; git push origin new-feature`
+3. `git rebase master`
+4. Add changes + `git add -A ; git commit -m"Message" ; git push origin new-feature`
 
 **REMOTE**
 1. Compare & pull request
 2. Compare and rebase branch with master
-3. Delete new-feature branch
+4. Delete new-feature branch
 
 **LOCAL**
 1. `git switch master`
