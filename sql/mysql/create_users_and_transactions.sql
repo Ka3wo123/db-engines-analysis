@@ -1,6 +1,8 @@
 CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(50) NOT NULL
+    name VARCHAR(255) NOT NULL,
+    surname VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS transactions (
@@ -11,10 +13,3 @@ CREATE TABLE IF NOT EXISTS transactions (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
--- Insert sample data
-INSERT INTO users (name) VALUES ('Alice'), ('Bob');
-
-INSERT INTO transactions (user_id, amount, is_fraudulent)
-VALUES
-  (1, 100.00, FALSE),
-  (2, 5000.00, TRUE);

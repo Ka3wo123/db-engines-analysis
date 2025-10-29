@@ -1,7 +1,7 @@
 services:
   postgresql:
     image: postgres:15
-    container_name: postgresql15
+    container_name: postgresql
     ports:
       - "5432:5432"
     environment:
@@ -12,7 +12,7 @@ services:
       - ../sql/postgresql:/docker-entrypoint-initdb.d
   mysql:
     image: mysql:8
-    container_name: mysql8
+    container_name: mysql
     ports:
       - "3306:3306"
     environment:
@@ -24,18 +24,30 @@ services:
       - ../sql/mysql:/docker-entrypoint-initdb.d
   cassandra:
     image: cassandra:4
-    container_name: cassandra4
+    container_name: cassandra
     ports:
       - "9042:9042"
-    volumes:
-      - ../cql:/cql-init
     environment:
       - CASSANDRA_AUTHENTICATOR=PasswordAuthenticator
       - CASSANDRA_AUTHORIZER=CassandraAuthorizer
       - CASSANDRA_ROLE_MANAGER=CassandraRoleManager
+  cassandra-loader:
+    container_name: cassandra-loader
+    image: cassandra:4
+    depends_on:
+      - cassandra
+    volumes:
+      - ../cql:/cql-init
+    entrypoint: [ "/bin/bash", "-c", "
+      until cqlsh cassandra -e 'DESCRIBE KEYSPACES'; do
+        echo 'Waiting for Cassandra...'; sleep 5;
+      done;
+      echo 'Loading keyspace'; cqlsh cassandra -f /cql-init/create_keyspace_and_transactions.cql
+    " ]
+
   neo4j:
     image: neo4j:5
-    container_name: neo4j5
+    container_name: neo4j
     ports:
       - "7474:7474" # HTTP
       - "7687:7687" # BOLT

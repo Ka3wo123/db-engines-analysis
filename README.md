@@ -45,24 +45,25 @@ Schemas for **PostgreSQL** and **MySQL** are defined in `sql` directory and are 
 Schemas for **Cassandra** and **Neo4j** are defined in `cql` and `cypher` respectively and are created using `main.py` script.
 
 **PostgreSQL**:
-- `docker exec -it postgresql15 psql -U postgres -d frauddb`
+- `docker exec -it postgresql psql -U postgres -d frauddb`
 - `\d` to show entities
 
 **MySQL**:
-- `docker exec -it mysql8 mysql -u root -pmysqlrootpass frauddb`
+- `docker exec -it mysql mysql -u root -pmysqlrootpass frauddb`
 - `show tables` to show entities
 
 **Cassandra**:
-- `docker exec -it cassandra4 cqlsh -u cassandra -p cassandra`
+- `docker exec -it cassandra cqlsh -u cassandra -p cassandra`
 - `describe keyspaces` - should be "fraud"
 - `select * from fraud.transactions` - should return empty transactions table
+> [!IMPORTANT] Cassandra driver on Linux requires such steps in order to work:
+> - install `libev` on OS with pacakge manager
+> - install dependency with `CFLAGS="-O2" pip install --no-binary :all: cassandra-driver`
 
 **Neo4j**:
-- `docker exec -it neo4j5 cypher-shell -u neo4j -p "cg8&fhjs10LOz"`
+- `docker exec -it neo4j cypher-shell -u neo4j -p "cg8&fhjs10LOz"`
 - `CALL db.labels();` to show nodes
 - `CALL db.relationshipTypes();` to show edges
-
-> Keep in mind to do this **OUTSIDE** venv. Run `deactivate` if in .venv.
 
 
 ## GitHub collaboration
@@ -75,7 +76,7 @@ Schemas for **Cassandra** and **Neo4j** are defined in `cql` and `cypher` respec
 **REMOTE**
 1. Compare & pull request
 2. Compare and rebase branch with master
-4. Delete new-feature branch
+3. Delete new-feature branch
 
 **LOCAL**
 1. `git switch master`
