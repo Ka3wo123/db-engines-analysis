@@ -5,53 +5,58 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: frauddb
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - ../sql/postgresql:/docker-entrypoint-initdb.d
+      - ../schemas/sql/postgresql:/docker-entrypoint-initdb.d
+
   mysql:
     image: mysql:8
     container_name: mysql
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: mysqlrootpass
-      MYSQL_USER: mysql
-      MYSQL_PASSWORD: mysql
-      MYSQL_DATABASE: frauddb
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
     volumes:
-      - ../sql/mysql:/docker-entrypoint-initdb.d
+      - ../schemas/sql/mysql:/docker-entrypoint-initdb.d
+
   cassandra:
     image: cassandra:4
     container_name: cassandra
     ports:
       - "9042:9042"
     environment:
-      - CASSANDRA_AUTHENTICATOR=PasswordAuthenticator
-      - CASSANDRA_AUTHORIZER=CassandraAuthorizer
-      - CASSANDRA_ROLE_MANAGER=CassandraRoleManager
+      CASSANDRA_AUTHENTICATOR: ${CASSANDRA_AUTHENTICATOR}
+      CASSANDRA_AUTHORIZER: ${CASSANDRA_AUTHORIZER}
+      CASSANDRA_ROLE_MANAGER: ${CASSANDRA_ROLE_MANAGER}
+
+  # creates keyspace and tables in Cassandra container
   cassandra-loader:
     container_name: cassandra-loader
     image: cassandra:4
     depends_on:
       - cassandra
     volumes:
-      - ../cql:/cql-init
+      - ../schemas/nosql/cql:/cql-init
     entrypoint: [ "/bin/bash", "-c", "
       until cqlsh cassandra -e 'DESCRIBE KEYSPACES'; do
         echo 'Waiting for Cassandra...'; sleep 5;
       done;
-      echo 'Loading keyspace'; cqlsh cassandra -f /cql-init/create_keyspace_and_transactions.cql
+      echo 'Loading keyspace'; cqlsh cassandra -f /cql-init/create_keyspace_and_transactions.cql;
+      echo 'Loaded keyspace';
     " ]
 
   neo4j:
     image: neo4j:5
     container_name: neo4j
     ports:
-      - "7474:7474" # HTTP
-      - "7687:7687" # BOLT
+      - "7474:7474"
+      - "7687:7687"
     environment:
-      NEO4J_AUTH: neo4j/cg8&fhjs10LOz
+      NEO4J_AUTH: ${NEO4J_USER}/${NEO4J_PASSWORD}
     volumes:
-      - ../cypher:/cypher-init
+      - ../schemas/nosql/cypher:/cypher-init

@@ -26,44 +26,41 @@ All engines are run in Docker containers.
 ## Setup & Run
 
 1. Clone repository and enter rootdir.
-```
-git clone git@github.com:Ka3wo123/db-engines-analysis.git
-cd FraudDetection
-```
+    ```
+    git clone https://github.com/Ka3wo123/db-engines-analysis.git
+    cd FraudDetection
+    ```
 2. Setup virtual environment for Python
-```
-python3 -m venv .venv
-source .venv/bin/activate # Linux/MacOS
-.venv\Scripts\activate    # Windows PowerShell
-```
+    ```
+    python3 -m venv .venv
+    source .venv/bin/activate # Linux/MacOS
+    .venv\Scripts\activate    # Windows PowerShell
+    ```
 3. Run `pip install -r requirements.txt` to install required dependencies and libraries (when adding new dependencies make sure to freeze them in requirements.txt file `pip freeze > requirements.txt`)
 4. In `docker` directory run `docker-compose up -d` to create and start database engines containers.
-5. Run `main.py` file via `python3 main.py` to generate schemas in particular databases.
+
+## Run benchmarks as described below:
+- in root dir run `python3 main.py` in order to run benchmarks. 
+- specifying arguments like `python3 main.py mysql cassandra` runs benchmarks only for MySQL and Cassandra. 
+- specifying options like `python3 main.py --records=1234` runs benchmarks with provided records amount (default is 1000).
+- `python3 main.py postgresql --records=10` will run benchmarks on PostgreSQL with 10 records.
+
+
+
 
 If `main.py` executes successfully you can check that in databases there are schemas created accordingly. \
 Schemas for **PostgreSQL** and **MySQL** are defined in `sql` directory and are created using volumes in `docker-compose.yml`. \
 Schemas for **Cassandra** and **Neo4j** are defined in `cql` and `cypher` respectively and are created using `main.py` script.
 
-**PostgreSQL**:
-- `docker exec -it postgresql psql -U postgres -d frauddb`
-- `\d` to show entities
-
-**MySQL**:
-- `docker exec -it mysql mysql -u root -pmysqlrootpass frauddb`
-- `show tables` to show entities
 
 **Cassandra**:
 - `docker exec -it cassandra cqlsh -u cassandra -p cassandra`
 - `describe keyspaces` - should be "fraud"
 - `select * from fraud.transactions` - should return empty transactions table
-> [!IMPORTANT] Cassandra driver on Linux requires such steps in order to work:
+> [!TIP] 
+> Cassandra driver on Linux requires such steps in order to work:
 > - install `libev` on OS with pacakge manager
 > - install dependency with `CFLAGS="-O2" pip install --no-binary :all: cassandra-driver`
-
-**Neo4j**:
-- `docker exec -it neo4j cypher-shell -u neo4j -p "cg8&fhjs10LOz"`
-- `CALL db.labels();` to show nodes
-- `CALL db.relationshipTypes();` to show edges
 
 
 ## GitHub collaboration

@@ -10,6 +10,6 @@ CREATE TABLE IF NOT EXISTS transactions (
     user_id INT NOT NULL,
     amount DECIMAL(10,2) NOT NULL,
     is_fraudulent BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
