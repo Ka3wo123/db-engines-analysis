@@ -1,7 +1,7 @@
 # Analytical Comparison of RDBMS and NoSQL – CRUD Performance
 
 This project analyzes and compares the **CRUD performance** of popular **RDBMS** and **noSQL** databases. \
-The aim is to check performance for data at a big scale (from thousands to billions). \
+The aim is to check performance for data at a big scale. \
 All engines are run in Docker containers.
 
 ## Databases Used
@@ -36,45 +36,25 @@ All engines are run in Docker containers.
     source .venv/bin/activate # Linux/MacOS
     .venv\Scripts\activate    # Windows PowerShell
     ```
-3. Run `pip install -r requirements.txt` to install required dependencies and libraries (when adding new dependencies make sure to freeze them in requirements.txt file `pip freeze > requirements.txt`)
+3. Run `pip install -r requirements.txt` to install required dependencies and libraries (when adding new dependencies
+   make sure to freeze them in requirements.txt file `pip freeze > requirements.txt`)
 4. In `docker` directory run `docker-compose up -d` to create and start database engines containers.
 
 ## Run benchmarks as described below:
-- in root dir run `python3 main.py` in order to run benchmarks. 
-- specifying arguments like `python3 main.py mysql cassandra` runs benchmarks only for MySQL and Cassandra. 
-- specifying options like `python3 main.py --records=1234` runs benchmarks with provided records amount (default is 1000).
-- `python3 main.py postgresql --records=10` will run benchmarks on PostgreSQL with 10 records.
 
-
-
-
-If `main.py` executes successfully you can check that in databases there are schemas created accordingly. \
-Schemas for **PostgreSQL** and **MySQL** are defined in `sql` directory and are created using volumes in `docker-compose.yml`. \
-Schemas for **Cassandra** and **Neo4j** are defined in `cql` and `cypher` respectively and are created using `main.py` script.
-
+- in root dir run `python3 main.py` in order to run benchmarks.
+- specifying arguments like `python3 main.py mysql cassandra` runs benchmarks only for MySQL and Cassandra.
+- specifying options like `python3 main.py --records=1234` runs benchmarks with provided records amount (default is
+  1000).
+- e.g. `python3 main.py postgresql --records=10` will run benchmarks on PostgreSQL with 10 records.
 
 **Cassandra**:
+
 - `docker exec -it cassandra cqlsh -u cassandra -p cassandra`
 - `describe keyspaces` - should be "fraud"
 - `select * from fraud.transactions` - should return empty transactions table
-> [!TIP] 
+
+> [!IMPORTANT]
 > Cassandra driver on Linux requires such steps in order to work:
 > - install `libev` on OS with pacakge manager
 > - install dependency with `CFLAGS="-O2" pip install --no-binary :all: cassandra-driver`
-
-
-## GitHub collaboration
- **LOCAL**
-1. `git fetch origin master` if there are changes on remote master
-2. `git checkout -b new-feature`
-3. `git rebase master`
-4. Add changes + `git add -A ; git commit -m"Message" ; git push origin new-feature`
-
-**REMOTE**
-1. Compare & pull request
-2. Compare and rebase branch with master
-3. Delete new-feature branch
-
-**LOCAL**
-1. `git switch master`
-2. `git pull origin master`

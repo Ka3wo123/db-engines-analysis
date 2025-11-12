@@ -6,7 +6,7 @@ import psutil
 from openpyxl import Workbook
 
 
-CRUD_OPERATIONS = ['create', 'read', 'update', 'delete', 'truncate']
+CRUD_OPERATIONS = ['create', 'read', 'update', 'delete', 'truncate', 'joins']
 
 
 def measure_performance(func):
@@ -62,7 +62,10 @@ def run_measurement(databases, records):
         print(f"\n=== Running benchmarks for {db_name.upper()} ===")
 
         for op in CRUD_OPERATIONS:
-            func = getattr(module, op)
+            func = getattr(module, op, None)
+            if func is None:
+                print(f"Function {op} not found. Skipping...")
+                continue
             print(f"Running {op}()...")
             sig = signature(func)
             if 'records' in sig.parameters:

@@ -7,8 +7,8 @@ from faker import Faker
 from measurements.measurement import measure_performance
 from measurements.db_config import CASSANDRA_KEYSPACE
 
-
 faker = Faker()
+
 
 def connection():
     cluster = Cluster(["127.0.0.1"])
@@ -21,15 +21,31 @@ def connection():
 def create(records: int = 1000):
     session = connection()
     insert_stmt = session.prepare("""
-        INSERT INTO transactions (id, user_id, amount, is_fraudulent, created_at)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO transactions 
+        (id, user_id, amount, is_fraudulent, created_at, receiver_ip_address, sender_ip_address, browser_agent,
+        device_id, device_type, bank_name, bank_iban, country, currency)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """)
 
     for _ in range(records):
         session.execute(
             insert_stmt,
-            (uuid.UUID(faker.uuid4()), uuid.UUID(faker.uuid4()), faker.pyfloat(left_digits=2, positive=True, min_value=0.01), faker.boolean(), faker.date_time())
-        )
+            (
+                uuid.UUID(faker.uuid4()),
+                uuid.UUID(faker.uuid4()),
+                faker.pydecimal(positive=True, max_value=1_000_000, min_value=0.01, right_digits=2),
+                faker.boolean(),
+                faker.date_time(),
+                faker.ipv4_public(),
+                faker.ipv4_public(),
+                faker.user_agent(),
+                uuid.UUID(faker.uuid4()),
+                faker.random_element(['Mobile', 'Desktop', 'Laptop', 'Tablet']),
+                faker.company() + " Bank",
+                faker.iban(),
+                faker.country(),
+                faker.currency()[0]
+            ))
 
 
 @measure_performance
@@ -55,6 +71,7 @@ def delete():
 
     for row in rows:
         session.execute(stmt, (row.id,))
+
 
 @measure_performance
 def truncate():
