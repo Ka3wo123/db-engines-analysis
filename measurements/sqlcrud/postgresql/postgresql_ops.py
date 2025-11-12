@@ -64,6 +64,6 @@ def delete():
 def truncate():
     conn = connection()
     cursor = conn.cursor()
-    cursor.execute("TRUNCATE TABLE users;")
+    cursor.execute("TRUNCATE TABLE transactions, users RESTART IDENTITY CASCADE;")
     conn.commit()
     conn.close()

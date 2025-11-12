@@ -1,7 +1,7 @@
-CREATE KEYSPACE IF NOT EXISTS fraud
+CREATE KEYSPACE IF NOT EXISTS fraudDetection
 WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
 
-USE fraud;
+USE fraudDetection;
 
 CREATE TABLE IF NOT EXISTS transactions (
     id UUID PRIMARY KEY,

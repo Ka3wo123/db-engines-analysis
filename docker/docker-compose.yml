@@ -17,9 +17,9 @@ services:
     ports:
       - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
     volumes:
       - ../schemas/sql/mysql:/docker-entrypoint-initdb.d
@@ -30,6 +30,9 @@ services:
     ports:
       - "9042:9042"
     environment:
+      CASSANDRA_USER: ${CASSANDRA_USER}
+      CASSANDRA_PASSWORD_SEEDER: yes
+      CASSANDRA_PASSWORD: ${CASSANDRA_PASSWORD}
       CASSANDRA_AUTHENTICATOR: ${CASSANDRA_AUTHENTICATOR}
       CASSANDRA_AUTHORIZER: ${CASSANDRA_AUTHORIZER}
       CASSANDRA_ROLE_MANAGER: ${CASSANDRA_ROLE_MANAGER}
@@ -57,6 +60,6 @@ services:
       - "7474:7474"
       - "7687:7687"
     environment:
-      NEO4J_AUTH: ${NEO4J_USER}/${NEO4J_PASSWORD}
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD}
     volumes:
       - ../schemas/nosql/cypher:/cypher-init
