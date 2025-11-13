@@ -5,3 +5,6 @@ __pycache__
 
 *.xlsx
 .~lock.*.xlsx#
+cpu.png
+ram.png
+time.png

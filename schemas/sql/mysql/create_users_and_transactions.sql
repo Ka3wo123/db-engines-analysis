@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     bank_name VARCHAR(255),
     bank_iban VARCHAR(255),
     country VARCHAR(255),
-    currency VARCHAR(5)
+    currency VARCHAR(5),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 

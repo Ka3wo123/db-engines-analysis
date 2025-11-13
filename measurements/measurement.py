@@ -5,7 +5,6 @@ from inspect import signature
 import psutil
 from openpyxl import Workbook
 
-
 CRUD_OPERATIONS = ['create', 'read', 'update', 'delete', 'truncate', 'joins']
 
 
@@ -23,7 +22,7 @@ def measure_performance(func):
             mem_before = process.memory_full_info().rss / (1024 * 1024)
 
         start_time = time.perf_counter()
-        call = func(*args, **kwargs)
+        func(*args, **kwargs)
         end_time = time.perf_counter()
 
         cpu_after = psutil.cpu_percent(interval=None)
@@ -44,7 +43,7 @@ def measure_performance(func):
     return wrapper
 
 
-def run_measurement(databases, records):
+def run_measurement(databases, records, repeats=5):
     results = []
     db_modules = {
         "mysql": "measurements.sqlcrud.mysql.mysql_ops",
@@ -66,14 +65,36 @@ def run_measurement(databases, records):
             if func is None:
                 print(f"Function {op} not found. Skipping...")
                 continue
-            print(f"Running {op}()...")
-            sig = signature(func)
-            if 'records' in sig.parameters:
-                stats = func(records=records)
-            else:
-                stats = func()
-            stats['database'] = db_name
-            results.append(stats)
+
+            print(f"Running {op}() for {repeats} repetitions...")
+
+            run_times = []
+            cpu_values = []
+            ram_values = []
+
+            for _ in range(repeats):
+                sig = signature(func)
+                # Run the benchmark once
+                if 'records' in sig.parameters:
+                    stats = func(records=records)
+                else:
+                    stats = func()
+
+                run_times.append(stats["time_sec"])
+                cpu_values.append(stats["cpu_percent"])
+                ram_values.append(stats["mem_usage_mb"])
+
+            # Store averages
+            results.append({
+                "database": db_name,
+                "operation": op,
+                "time_sec": sum(run_times) / repeats,
+                "cpu_percent": sum(cpu_values) / repeats,
+                "mem_usage_mb": sum(ram_values) / repeats,
+                "records_amount": records
+            })
+
+
     return results
 
 
@@ -82,7 +103,7 @@ def save_to_excel(results, filename="db_performance.xlsx"):
     ws = wb.active
     ws.title = "Performance"
 
-    ws.append(["Database", "Operation", "Time (s)", "CPU (%)", "RAM Change (MB)", "Records amount"])
+    ws.append(["Database", "Operation", "Time (s) (avg)", "CPU (%) (avg)", "RAM Change (MB) (avg)", "Records amount"])
 
     for r in results:
         ws.append([
@@ -92,7 +113,6 @@ def save_to_excel(results, filename="db_performance.xlsx"):
             round(r["cpu_percent"], 2),
             round(r["mem_usage_mb"], 2),
             r['records_amount']
-
         ])
 
     wb.save(filename)

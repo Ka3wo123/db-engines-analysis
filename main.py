@@ -1,6 +1,7 @@
 import argparse
 
 from measurements.measurement import run_measurement, save_to_excel
+from measurements.plots import load_and_plot
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Database benchmark runner")
@@ -18,5 +19,6 @@ if __name__ == "__main__":
 
     print(f"Databases that will be measured: {', '.join(args.databases)} with {args.records} records")
 
-    results = run_measurement(databases=args.databases, records=args.records)
+    results = run_measurement(databases=args.databases, records=args.records, repeats=2)
     save_to_excel(results)
+    load_and_plot("db_performance.xlsx")
