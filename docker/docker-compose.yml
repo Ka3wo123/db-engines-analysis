@@ -37,21 +37,17 @@ services:
       CASSANDRA_AUTHORIZER: ${CASSANDRA_AUTHORIZER}
       CASSANDRA_ROLE_MANAGER: ${CASSANDRA_ROLE_MANAGER}
 
-  # creates keyspace and tables in Cassandra container
+  # loads keyspace and creates tables
   cassandra-loader:
-    container_name: cassandra-loader
     image: cassandra:4
+    container_name: cassandra-loader
     depends_on:
       - cassandra
     volumes:
       - ../schemas/nosql/cql:/cql-init
-    entrypoint: [ "/bin/bash", "-c", "
-      until cqlsh cassandra -e 'DESCRIBE KEYSPACES'; do
-        echo 'Waiting for Cassandra...'; sleep 5;
-      done;
-      echo 'Loading keyspace'; cqlsh cassandra -f /cql-init/create_keyspace_and_transactions.cql;
-      echo 'Loaded keyspace';
-    " ]
+    environment:
+      CASSANDRA_KEYSPACE: ${CASSANDRA_KEYSPACE}
+    entrypoint: [ "/bin/sh", "-c", "sh /cql-init/init_db.sh" ]
 
   neo4j:
     image: neo4j:5
