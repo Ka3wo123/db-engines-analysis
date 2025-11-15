@@ -126,6 +126,7 @@ def truncate():
     cursor = conn.cursor()
     cursor.execute("SET FOREIGN_KEY_CHECKS=0;")
     cursor.execute("TRUNCATE TABLE users;")
+    cursor.execute("TRUNCATE TABLE transactions;")
     cursor.execute("SET FOREIGN_KEY_CHECKS=1;")
     conn.commit()
     conn.close()

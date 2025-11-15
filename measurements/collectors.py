@@ -1,4 +1,4 @@
-def _postgres_collect_metrics(cur, query, operation, records=0):
+def _postgres_collect_metrics(cur, query, operation):
     explain_sql = f"EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) {query}"
     cur.execute(explain_sql)
     raw = cur.fetchall()[0][0]
@@ -12,24 +12,18 @@ def _postgres_collect_metrics(cur, query, operation, records=0):
     }
 
 
-def _mysql_collect_metrics(cur, query, operation, records=0):
+def _mysql_collect_metrics(cur, query, operation):
     cur.execute(f"EXPLAIN ANALYZE {query}")
     raw = cur.fetchall()
-
-    text = " ".join([str(r[0]) for r in raw])
-    execution_time = None
-
-    if "timing=" in text:
-        execution_time = float(text.split("timing=")[1].split("ms")[0])
 
     return {
         "db_name": "mysql",
         "operation": operation,
-        "execution_time_ms": execution_time
+        "db_raw": raw
     }
 
 
-def _cassandra_collect_metrics(session, query: str, operation, records=0):
+def _cassandra_collect_metrics(session, query: str, operation):
     stmt = session.prepare(query)
     result = session.execute(stmt, trace=True)
     trace = result.get_query_trace()
@@ -41,7 +35,7 @@ def _cassandra_collect_metrics(session, query: str, operation, records=0):
     }
 
 
-def _neo4j_collect_metrics(driver_connection, query, operation, records=0):
+def _neo4j_collect_metrics(driver_connection, query, operation):
     with driver_connection.session() as session:
         profile_result = session.run(f"PROFILE {query}")
         list(profile_result)
@@ -50,7 +44,7 @@ def _neo4j_collect_metrics(driver_connection, query, operation, records=0):
     return {
         "db_name": "neo4j",
         "operation": operation,
-        "execution_time_ms": 0
+        "db_raw": summary
     }
 
 

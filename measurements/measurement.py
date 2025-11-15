@@ -107,6 +107,7 @@ def run_measurement(databases, records=1000, repeats=5):
                 results.append({
                     "database": db_name,
                     "operation": op,
+                    "records_amount": records,
                     "time_sec": sum(run_times) / repeats,
                     "cpu_percent": sum(cpu_values) / repeats,
                     "mem_usage_mb": sum(ram_values) / repeats,
@@ -127,7 +128,7 @@ def save_to_excel(results, filename="db_performance.xlsx"):
     ws = wb.active
     ws.title = "Performance"
 
-    ws.append(["Database", "Operation", "Time (s) (avg)", "CPU (%) (avg)", "RAM Change (MB) (avg)", "db metrics"])
+    ws.append(["Database", "Operation", "Time (s) (avg)", "CPU (%) (avg)", "RAM Change (MB) (avg)", "Records", "DB metrics"])
 
     for r in results:
         ws.append([
@@ -136,6 +137,7 @@ def save_to_excel(results, filename="db_performance.xlsx"):
             round(r["time_sec"], 4),
             round(r["cpu_percent"], 2),
             round(r["mem_usage_mb"], 2),
+            r["records_amount"],
             json.dumps(r['db_raw'])
         ])
 
