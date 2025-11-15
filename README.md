@@ -48,13 +48,11 @@ All engines are run in Docker containers.
   1000).
 - e.g. `python3 main.py postgresql --records=10` will run benchmarks on PostgreSQL with 10 records.
 
-**Cassandra**:
-
-- `docker exec -it cassandra cqlsh -u cassandra -p cassandra`
-- `describe keyspaces` - should be "fraud"
-- `select * from fraud.transactions` - should return empty transactions table
-
 > [!IMPORTANT]
 > Cassandra driver on Linux requires such steps in order to work:
 > - install `libev` on OS with pacakge manager
 > - install dependency with `CFLAGS="-O2" pip install --no-binary :all: cassandra-driver`
+
+# How to add new DQL to measure?
+1. In [nosql](measurements/nosql) or [sql](measurements/sql) directories there are python files. Add new function with DQL query for corresponding database.
+2. Annotate it with @measure_performance annotation.
