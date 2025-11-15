@@ -8,7 +8,7 @@ def _postgres_collect_metrics(cur, query, operation):
     return {
         "db_name": "postgresql",
         "operation": operation,
-        "execution_time_ms": execution_time
+        "db_raw": raw
     }
 
 
