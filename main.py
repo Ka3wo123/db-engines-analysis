@@ -19,6 +19,6 @@ if __name__ == "__main__":
 
     print(f"Databases that will be measured: {', '.join(args.databases)} with {args.records} records")
 
-    results = run_measurement(databases=args.databases, records=args.records, repeats=2)
+    results = run_measurement(databases=args.databases, records=args.records, repeats=1)
     save_to_excel(results)
     load_and_plot("db_performance.xlsx")

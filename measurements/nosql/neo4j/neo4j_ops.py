@@ -1,3 +1,4 @@
+import inspect
 import uuid
 
 from faker import Faker
@@ -15,7 +16,6 @@ def connection():
     return GraphDatabase.driver(uri, auth=(NEO4J_USER, NEO4J_PASSWORD))
 
 
-# @measure_performance
 def create(records: int = 1000):
     driver = connection()
     with driver.session() as session:
@@ -59,7 +59,7 @@ def create(records: int = 1000):
                 "transaction_id": transaction_id,
                 "amount": float(faker.pydecimal(right_digits=2, positive=True, max_value=1_000_000, min_value=0.01)),
                 "currency": faker.currency()[0],
-                "is_fraudulent": faker.boolean(),
+                "is_fraudulent": faker.boolean(chance_of_getting_true=1),
                 "receiver_ip_address": faker.ipv4_public(),
                 "sender_ip_address": faker.ipv4_public(),
                 "browser_agent": faker.user_agent(),
@@ -79,9 +79,6 @@ def read():
     return metrics
 
 
-
-
-@measure_performance
 def update():
     driver = connection()
     with driver.session() as session:
@@ -91,7 +88,6 @@ def update():
         """)
 
 
-@measure_performance
 def delete():
     driver = connection()
     with driver.session() as session:
@@ -102,15 +98,7 @@ def delete():
         """)
 
 
-@measure_performance
 def truncate():
     driver = connection()
     with driver.session() as session:
         session.run("MATCH (n) DETACH DELETE n")
-
-
-def _run_profile_query(driver, query: str):
-    with driver.session() as session:
-        profile_result = session.run(f"PROFILE {query}")
-        summary = profile_result.consume().profile if profile_result else None
-    return summary

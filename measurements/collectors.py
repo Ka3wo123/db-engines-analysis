@@ -37,18 +37,15 @@ def _cassandra_collect_metrics(session, query: str, operation, records=0):
     return {
         "db_name": "cassandra",
         "operation": operation,
-        "execution_time_ms": trace.duration
+        "db_raw": str(trace)
     }
 
 
 def _neo4j_collect_metrics(driver_connection, query, operation, records=0):
     with driver_connection.session() as session:
-        profile_result = session.run(f"EXPLAIN {query}")
+        profile_result = session.run(f"PROFILE {query}")
         list(profile_result)
         summary = profile_result.consume().profile
-        print(summary)
-
-
 
     return {
         "db_name": "neo4j",

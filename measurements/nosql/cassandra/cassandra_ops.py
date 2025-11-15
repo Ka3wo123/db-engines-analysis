@@ -2,12 +2,11 @@ import uuid
 
 from cassandra.cluster import Cluster
 from cassandra.query import SimpleStatement
-
 from faker import Faker
 
-from measurements.collectors import _cassandra_collect_metrics, run_metrics
-from measurements.measurement import measure_performance
+from measurements.collectors import run_metrics
 from measurements.db_config import CASSANDRA_KEYSPACE
+from measurements.measurement import measure_performance
 
 faker = Faker()
 
@@ -18,8 +17,6 @@ def connection():
     session.set_keyspace(CASSANDRA_KEYSPACE)
     return session
 
-
-@measure_performance
 def create(records: int = 1000):
     session = connection()
     insert_stmt = session.prepare("""
@@ -36,7 +33,7 @@ def create(records: int = 1000):
                 uuid.UUID(faker.uuid4()),
                 uuid.UUID(faker.uuid4()),
                 faker.pydecimal(positive=True, max_value=1_000_000, min_value=0.01, right_digits=2),
-                faker.boolean(),
+                faker.boolean(chance_of_getting_true=1),
                 faker.date_time(),
                 faker.ipv4_public(),
                 faker.ipv4_public(),
@@ -57,8 +54,14 @@ def read():
     collect_metrics = run_metrics("cassandra", session, query, "read")
     return collect_metrics
 
-
 @measure_performance
+def aggregate():
+    session = connection()
+    query = "SELECT SUM(amount) FROM transactions"
+    metrics = run_metrics("cassandra", session, query, 'aggregate')
+    return metrics
+
+
 def update():
     session = connection()
     stmt = session.prepare("UPDATE transactions SET amount = ? WHERE id = ? IF EXISTS")
@@ -67,7 +70,6 @@ def update():
         session.execute(stmt, (1.00, row.id))
 
 
-@measure_performance
 def delete():
     session = connection()
     stmt = session.prepare("DELETE FROM transactions WHERE id = ?")
@@ -77,18 +79,8 @@ def delete():
         session.execute(stmt, (row.id,))
 
 
-@measure_performance
 def truncate():
     session = connection()
     session.execute("TRUNCATE TABLE transactions")
     session.shutdown()
 
-
-def _run_tracing_query(session, query, params=None):
-    stmt = SimpleStatement(query)
-
-    result = session.execute(stmt, parameters=params, trace=True)
-
-    trace = result.get_query_trace() if result else None
-    print(trace)
-    return trace

@@ -3,10 +3,16 @@ import json
 import time
 from functools import wraps
 from inspect import signature
+
 import psutil
 from openpyxl import Workbook
 
-DQL_OPS = ['read']
+db_modules = {
+    "mysql": "measurements.sql.mysql.mysql_ops",
+    "postgresql": "measurements.sql.postgresql.postgresql_ops",
+    "cassandra": "measurements.nosql.cassandra.cassandra_ops",
+    "neo4j": "measurements.nosql.neo4j.neo4j_ops",
+}
 
 
 def measure_performance(func):
@@ -45,20 +51,21 @@ def measure_performance(func):
 
         if db_metrics and isinstance(db_metrics, dict):
             stats.update(db_metrics)
-
         return stats
+
+    wrapper._is_measurable = True
 
     return wrapper
 
 
-def run_measurement(databases, records, repeats=5):
+def run_measurement(databases, records=1000, repeats=5):
+    """
+    For each database:
+    1. Run DML create
+    2. Measure DQL operations
+    3. Truncate table after measurement
+    """
     results = []
-    db_modules = {
-        "mysql": "measurements.sqlcrud.mysql.mysql_ops",
-        "postgresql": "measurements.sqlcrud.postgresql.postgresql_ops",
-        "cassandra": "measurements.nosqlcrud.cassandra.cassandra_ops",
-        "neo4j": "measurements.nosqlcrud.neo4j.neo4j_ops",
-    }
 
     for db_name in databases:
         if db_name not in db_modules:
@@ -68,41 +75,49 @@ def run_measurement(databases, records, repeats=5):
         module = importlib.import_module(db_modules[db_name])
         print(f"\n=== Running benchmarks for {db_name.upper()} ===")
 
-        for op in DQL_OPS:
+        create_func = getattr(module, "create", None)
+        if create_func:
+            print(f"Creating records for {db_name.upper()}...", end='')
+            sig = signature(create_func)
+            if "records" in sig.parameters:
+                create_func(records=records)
+            else:
+                create_func()
+            print("Finished.")
+
+        for op in dir(module):
             func = getattr(module, op, None)
-            if func is None:
+            if not func:
                 print(f"Function {op} not found. Skipping...")
                 continue
+            if callable(func) and getattr(func, "_is_measurable", False):
+                print(f"- Running {op}() for {repeats} repetitions...")
 
-            print(f"Running {op}() for {repeats} repetitions...")
+                run_times = []
+                cpu_values = []
+                ram_values = []
+                stats = None
 
-            run_times = []
-            cpu_values = []
-            ram_values = []
-            stats = None
-
-            for _ in range(repeats):
-                sig = signature(func)
-                # Run the benchmark once
-                if 'records' in sig.parameters:
-                    stats = func(records=records)
-                else:
+                for _ in range(repeats):
                     stats = func()
+                    run_times.append(stats["time_sec"])
+                    cpu_values.append(stats["cpu_percent"])
+                    ram_values.append(stats["mem_usage_mb"])
 
-                run_times.append(stats["time_sec"])
-                cpu_values.append(stats["cpu_percent"])
-                ram_values.append(stats["mem_usage_mb"])
+                results.append({
+                    "database": db_name,
+                    "operation": op,
+                    "time_sec": sum(run_times) / repeats,
+                    "cpu_percent": sum(cpu_values) / repeats,
+                    "mem_usage_mb": sum(ram_values) / repeats,
+                    "db_raw": stats["db_metrics"]
+                })
 
-            # Store averages
-            results.append({
-                "database": db_name,
-                "operation": op,
-                "time_sec": sum(run_times) / repeats,
-                "cpu_percent": sum(cpu_values) / repeats,
-                "mem_usage_mb": sum(ram_values) / repeats,
-                "records_amount": records,
-                "db_raw": stats["db_metrics"]
-            })
+        truncate_func = getattr(module, "truncate", None)
+        if truncate_func:
+            print(f"Truncating table for {db_name.upper()}...", end='')
+            truncate_func()
+            print("Finished.")
 
     return results
 
@@ -112,8 +127,7 @@ def save_to_excel(results, filename="db_performance.xlsx"):
     ws = wb.active
     ws.title = "Performance"
 
-    ws.append(["Database", "Operation", "Time (s) (avg)", "CPU (%) (avg)", "RAM Change (MB) (avg)", "Records amount",
-               "db metrics"])
+    ws.append(["Database", "Operation", "Time (s) (avg)", "CPU (%) (avg)", "RAM Change (MB) (avg)", "db metrics"])
 
     for r in results:
         ws.append([
@@ -122,7 +136,6 @@ def save_to_excel(results, filename="db_performance.xlsx"):
             round(r["time_sec"], 4),
             round(r["cpu_percent"], 2),
             round(r["mem_usage_mb"], 2),
-            r['records_amount'],
             json.dumps(r['db_raw'])
         ])
 
