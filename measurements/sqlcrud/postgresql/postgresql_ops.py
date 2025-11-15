@@ -1,5 +1,6 @@
 import psycopg2
 
+from measurements.collectors import _postgres_collect_metrics, run_metrics
 from measurements.measurement import measure_performance
 from faker import Faker
 from measurements.db_config import POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
@@ -20,15 +21,11 @@ def connection():
 def create(records: int = 1000):
     conn = connection()
     cur = conn.cursor()
+    query = "INSERT INTO users (name, surname, email) VALUES (%s, %s, %s)"
+    users = [(faker.first_name(), faker.last_name(), faker.email()) for _ in range(records)]
 
-    users = [
-        (faker.first_name(), faker.last_name(), faker.email())
-        for _ in range(records)
-    ]
-    cur.executemany(
-        "INSERT INTO users (name, surname, email) VALUES (%s, %s, %s)",
-        users
-    )
+    cur.executemany(query, users)
+
     conn.commit()
     conn.close()
 
@@ -37,16 +34,22 @@ def create(records: int = 1000):
 def read():
     conn = connection()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM users")
-    cur.fetchall()
+    query = "SELECT * FROM users"
+
+    collect_metrics = run_metrics("postgresql", cur, query, "read")
+
     conn.close()
+    return collect_metrics
 
 
 @measure_performance
 def update():
     conn = connection()
     cur = conn.cursor()
-    cur.execute("UPDATE users SET name='Updated' WHERE id % 10 = 0")
+    query = "UPDATE users SET name='Updated' WHERE id % 10 = 0"
+
+    cur.execute(query)
+
     conn.commit()
     conn.close()
 
@@ -55,15 +58,20 @@ def update():
 def delete():
     conn = connection()
     cur = conn.cursor()
-    cur.execute("DELETE FROM users WHERE id % 10 = 5")
+    query = "DELETE FROM users WHERE id % 10 = 5"
+
+    cur.execute(query)
+
     conn.commit()
     conn.close()
 
-
-@measure_performance
-def truncate():
-    conn = connection()
-    cursor = conn.cursor()
-    cursor.execute("TRUNCATE TABLE transactions, users RESTART IDENTITY CASCADE;")
-    conn.commit()
-    conn.close()
+# @measure_performance
+# def truncate():
+#     conn = connection()
+#     cur = conn.cursor()
+#     query = "TRUNCATE TABLE transactions, users RESTART IDENTITY CASCADE"
+#
+#     cur.execute(query)
+#
+#     conn.commit()
+#     conn.close()

@@ -3,6 +3,7 @@ import uuid
 from faker import Faker
 from neo4j import GraphDatabase
 
+from measurements.collectors import run_metrics
 from measurements.db_config import NEO4J_USER, NEO4J_PASSWORD
 from measurements.measurement import measure_performance
 
@@ -14,7 +15,7 @@ def connection():
     return GraphDatabase.driver(uri, auth=(NEO4J_USER, NEO4J_PASSWORD))
 
 
-@measure_performance
+# @measure_performance
 def create(records: int = 1000):
     driver = connection()
     with driver.session() as session:
@@ -73,11 +74,11 @@ def create(records: int = 1000):
 @measure_performance
 def read():
     driver = connection()
-    with driver.session() as session:
-        session.run("""
-        MATCH (s:User)-[:MADE]->(t:Transaction)-[:TO]->(r:User)
-        RETURN s, t, r
-        """)
+    query = "MATCH (s:User)-[:MADE]->(t:Transaction)-[:TO]->(r:User) RETURN s, t, r"
+    metrics = run_metrics("neo4j", driver, query, "read")
+    return metrics
+
+
 
 
 @measure_performance
@@ -101,8 +102,15 @@ def delete():
         """)
 
 
-# @measure_performance
-# def truncate():
-#     driver = connection()
-#     with driver.session() as session:
-#         session.run("MATCH (n) DETACH DELETE n")
+@measure_performance
+def truncate():
+    driver = connection()
+    with driver.session() as session:
+        session.run("MATCH (n) DETACH DELETE n")
+
+
+def _run_profile_query(driver, query: str):
+    with driver.session() as session:
+        profile_result = session.run(f"PROFILE {query}")
+        summary = profile_result.consume().profile if profile_result else None
+    return summary
