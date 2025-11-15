@@ -1,15 +1,17 @@
 import importlib
+import json
 import time
 from functools import wraps
 from inspect import signature
 import psutil
 from openpyxl import Workbook
 
-CRUD_OPERATIONS = ['create', 'read', 'update', 'delete', 'truncate', 'joins']
+DQL_OPS = ['read']
 
 
 def measure_performance(func):
-    """CPU, RAM and execution time measurement decorator for any CRUD operation for any database"""
+    """CPU, RAM and execution time measurement decorator DQL operations for any database"""
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         num_records = kwargs.get("records", 1000)
@@ -22,7 +24,7 @@ def measure_performance(func):
             mem_before = process.memory_full_info().rss / (1024 * 1024)
 
         start_time = time.perf_counter()
-        func(*args, **kwargs)
+        db_metrics = func(*args, **kwargs)
         end_time = time.perf_counter()
 
         cpu_after = psutil.cpu_percent(interval=None)
@@ -32,13 +34,19 @@ def measure_performance(func):
         except AttributeError:
             mem_after = process.memory_full_info().rss / (1024 * 1024)
 
-        return {
+        stats = {
             "operation": func.__name__,
             "time_sec": end_time - start_time,
             "cpu_percent": (cpu_after + cpu_before) / 2,
             "mem_usage_mb": mem_after - mem_before,
-            "records_amount": num_records
+            "records_amount": num_records,
+            "db_metrics": db_metrics,
         }
+
+        if db_metrics and isinstance(db_metrics, dict):
+            stats.update(db_metrics)
+
+        return stats
 
     return wrapper
 
@@ -60,7 +68,7 @@ def run_measurement(databases, records, repeats=5):
         module = importlib.import_module(db_modules[db_name])
         print(f"\n=== Running benchmarks for {db_name.upper()} ===")
 
-        for op in CRUD_OPERATIONS:
+        for op in DQL_OPS:
             func = getattr(module, op, None)
             if func is None:
                 print(f"Function {op} not found. Skipping...")
@@ -71,6 +79,7 @@ def run_measurement(databases, records, repeats=5):
             run_times = []
             cpu_values = []
             ram_values = []
+            stats = None
 
             for _ in range(repeats):
                 sig = signature(func)
@@ -91,9 +100,9 @@ def run_measurement(databases, records, repeats=5):
                 "time_sec": sum(run_times) / repeats,
                 "cpu_percent": sum(cpu_values) / repeats,
                 "mem_usage_mb": sum(ram_values) / repeats,
-                "records_amount": records
+                "records_amount": records,
+                "db_raw": stats["db_metrics"]
             })
-
 
     return results
 
@@ -103,7 +112,8 @@ def save_to_excel(results, filename="db_performance.xlsx"):
     ws = wb.active
     ws.title = "Performance"
 
-    ws.append(["Database", "Operation", "Time (s) (avg)", "CPU (%) (avg)", "RAM Change (MB) (avg)", "Records amount"])
+    ws.append(["Database", "Operation", "Time (s) (avg)", "CPU (%) (avg)", "RAM Change (MB) (avg)", "Records amount",
+               "db metrics"])
 
     for r in results:
         ws.append([
@@ -112,7 +122,8 @@ def save_to_excel(results, filename="db_performance.xlsx"):
             round(r["time_sec"], 4),
             round(r["cpu_percent"], 2),
             round(r["mem_usage_mb"], 2),
-            r['records_amount']
+            r['records_amount'],
+            json.dumps(r['db_raw'])
         ])
 
     wb.save(filename)

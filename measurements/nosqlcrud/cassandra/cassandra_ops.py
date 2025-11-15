@@ -4,6 +4,8 @@ from cassandra.cluster import Cluster
 from cassandra.query import SimpleStatement
 
 from faker import Faker
+
+from measurements.collectors import _cassandra_collect_metrics, run_metrics
 from measurements.measurement import measure_performance
 from measurements.db_config import CASSANDRA_KEYSPACE
 
@@ -51,7 +53,9 @@ def create(records: int = 1000):
 @measure_performance
 def read():
     session = connection()
-    session.execute(SimpleStatement("SELECT * FROM transactions"))
+    query = "SELECT * FROM transactions"
+    collect_metrics = run_metrics("cassandra", session, query, "read")
+    return collect_metrics
 
 
 @measure_performance
@@ -78,3 +82,13 @@ def truncate():
     session = connection()
     session.execute("TRUNCATE TABLE transactions")
     session.shutdown()
+
+
+def _run_tracing_query(session, query, params=None):
+    stmt = SimpleStatement(query)
+
+    result = session.execute(stmt, parameters=params, trace=True)
+
+    trace = result.get_query_trace() if result else None
+    print(trace)
+    return trace

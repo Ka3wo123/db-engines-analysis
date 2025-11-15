@@ -1,6 +1,8 @@
 import mysql.connector
 from faker import Faker
 import os
+
+from measurements.collectors import _mysql_collect_metrics, run_metrics
 from measurements.measurement import measure_performance
 from measurements.db_config import MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE
 fake = Faker()
@@ -37,9 +39,12 @@ def create(records: int = 1000):
 def read():
     conn = connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users")
+    query = "SELECT * FROM users"
+    collect_metrics = run_metrics("mysql", cursor, query, "read")
     cursor.fetchall()
     conn.close()
+
+    return collect_metrics
 
 
 @measure_performance
@@ -68,3 +73,11 @@ def truncate():
     cursor.execute("SET FOREIGN_KEY_CHECKS=1;")
     conn.commit()
     conn.close()
+
+def _run_explain_analyze(cur, query: str):
+    explain_query = f"EXPLAIN ANALYZE {query}"
+
+    cur.execute(explain_query)
+    explain_result = cur.fetchall()
+
+    return explain_result

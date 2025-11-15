@@ -29,7 +29,7 @@ def load_and_plot(filename):
     plt.legend()
     plt.tight_layout()
     #plt.savefig("time.png")
-    plt.show()
+    # plt.show()
 
 
     # Plot: CPU
@@ -45,7 +45,7 @@ def load_and_plot(filename):
     plt.legend()
     plt.tight_layout()
     #plt.savefig("cpu.png")
-    plt.show()
+    # plt.show()
 
     # Plot: RAM Change
     plt.figure(figsize=(10, 6))
@@ -60,6 +60,6 @@ def load_and_plot(filename):
     plt.legend()
     plt.tight_layout()
     #plt.savefig("ram.png")
-    plt.show()
+    # plt.show()
 
 
