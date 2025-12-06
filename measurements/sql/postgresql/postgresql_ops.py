@@ -62,7 +62,7 @@ def create(records: int = 1000):
     conn.close()
 
 @measure_performance
-def read():
+def read(container):
     conn = connection()
     cur = conn.cursor()
     query = "SELECT * FROM users"
@@ -74,7 +74,7 @@ def read():
 
 
 @measure_performance
-def join():
+def join(container):
     conn = connection()
     cur = conn.cursor()
 
@@ -93,7 +93,7 @@ def join():
 
 
 @measure_performance
-def aggregate():
+def aggregate(container):
     conn = connection()
     cursor = conn.cursor()
 

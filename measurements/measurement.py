@@ -1,6 +1,7 @@
 import importlib
 import json
 import time
+import subprocess
 from functools import wraps
 from inspect import signature
 
@@ -13,40 +14,59 @@ db_modules = {
     "cassandra": "measurements.nosql.cassandra.cassandra_ops",
     "neo4j": "measurements.nosql.neo4j.neo4j_ops",
 }
+db_containers = {
+    "mysql": "mysql",
+    "postgresql": "postgresql",
+    "cassandra": "cassandra",
+    "neo4j": "neo4j",
+}
+def parse_mem(value):
+    value = value.strip().lower()
 
+    if value.endswith("gib"):
+        return float(value.replace("gib", "")) * 1024
+    if value.endswith("mib"):
+        return float(value.replace("mib", ""))
+    if value.endswith("kib"):
+        return float(value.replace("kib", "")) / 1024
+
+    # fallback
+    return float(value)
+
+def get_container_stats(container):
+    result = subprocess.run(
+        ["docker", "stats", container, "--no-stream", "--format", "{{json .}}"],
+        capture_output=True, text=True
+    )
+
+    stats = json.loads(result.stdout)
+
+    mem_raw = stats["MemUsage"].split("/")[0].strip()
+
+    return {
+        "cpu_percent": float(stats["CPUPerc"].replace("%", "")),
+        "mem_usage_mb": parse_mem(mem_raw)
+    }
 
 def measure_performance(func):
-    """CPU, RAM and execution time measurement decorator DQL operations for any database"""
-
     @wraps(func)
     def wrapper(*args, **kwargs):
-        num_records = kwargs.get("records", 1000)
-        process = psutil.Process()
-        cpu_before = psutil.cpu_percent(interval=None)
+        container = kwargs.get("container")  # kluczowa zmiana
 
-        try:
-            mem_before = process.memory_info().rss / (1024 * 1024)
-        except AttributeError:
-            mem_before = process.memory_full_info().rss / (1024 * 1024)
+        before = get_container_stats(container)
+        start = time.perf_counter()
 
-        start_time = time.perf_counter()
         db_metrics = func(*args, **kwargs)
-        end_time = time.perf_counter()
 
-        cpu_after = psutil.cpu_percent(interval=None)
-
-        try:
-            mem_after = process.memory_info().rss / (1024 * 1024)
-        except AttributeError:
-            mem_after = process.memory_full_info().rss / (1024 * 1024)
+        end = time.perf_counter()
+        after = get_container_stats(container)
 
         stats = {
             "operation": func.__name__,
-            "time_sec": end_time - start_time,
-            "cpu_percent": (cpu_after + cpu_before) / 2,
-            "mem_usage_mb": mem_after - mem_before,
-            "records_amount": num_records,
-            "db_metrics": db_metrics,
+            "time_sec": end - start,
+            "cpu_percent": after["cpu_percent"],
+            "mem_usage_mb": after["mem_usage_mb"] - before["mem_usage_mb"],
+            "db_metrics": db_metrics
         }
 
         if db_metrics and isinstance(db_metrics, dict):
@@ -54,9 +74,7 @@ def measure_performance(func):
         return stats
 
     wrapper._is_measurable = True
-
     return wrapper
-
 
 def run_measurement(databases, records=1000, repeats=5):
     """
@@ -99,7 +117,7 @@ def run_measurement(databases, records=1000, repeats=5):
                 stats = None
 
                 for _ in range(repeats):
-                    stats = func()
+                    stats = func(container=db_containers[db_name])
                     run_times.append(stats["time_sec"])
                     cpu_values.append(stats["cpu_percent"])
                     ram_values.append(stats["mem_usage_mb"])

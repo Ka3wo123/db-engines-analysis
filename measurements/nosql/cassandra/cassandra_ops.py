@@ -48,14 +48,14 @@ def create(records: int = 1000):
 
 
 @measure_performance
-def read():
+def read(container):
     session = connection()
     query = "SELECT * FROM transactions"
     collect_metrics = run_metrics("cassandra", session, query, "read")
     return collect_metrics
 
 @measure_performance
-def aggregate():
+def aggregate(container):
     session = connection()
     query = "SELECT SUM(amount) FROM transactions"
     metrics = run_metrics("cassandra", session, query, 'aggregate')

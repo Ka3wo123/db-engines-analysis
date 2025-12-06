@@ -72,7 +72,7 @@ def create(records: int = 1000):
 
 
 @measure_performance
-def read():
+def read(container):
     driver = connection()
     query = "MATCH (s:User)-[:MADE]->(t:Transaction)-[:TO]->(r:User) RETURN s, t, r"
     metrics = run_metrics("neo4j", driver, query, "read")
