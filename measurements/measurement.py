@@ -4,14 +4,22 @@ import time
 from functools import wraps
 from inspect import signature
 
-import psutil
 from openpyxl import Workbook
+
+from measurements.docker_helper import get_container_stats_raw
 
 db_modules = {
     "mysql": "measurements.sql.mysql.mysql_ops",
     "postgresql": "measurements.sql.postgresql.postgresql_ops",
     "cassandra": "measurements.nosql.cassandra.cassandra_ops",
     "neo4j": "measurements.nosql.neo4j.neo4j_ops",
+}
+
+db_containers = {
+    "mysql":"mysql",
+    "postgresql":"postgresql",
+    "cassandra":"cassandra",
+    "neo4j":"neo4j",
 }
 
 
@@ -21,30 +29,19 @@ def measure_performance(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         num_records = kwargs.get("records", 1000)
-        process = psutil.Process()
-        cpu_before = psutil.cpu_percent(interval=None)
+        container = kwargs.get("container")
 
-        try:
-            mem_before = process.memory_info().rss / (1024 * 1024)
-        except AttributeError:
-            mem_before = process.memory_full_info().rss / (1024 * 1024)
-
-        start_time = time.perf_counter()
+        before_resources = get_container_stats_raw(container)
+        start = time.perf_counter()
         db_metrics = func(*args, **kwargs)
-        end_time = time.perf_counter()
-
-        cpu_after = psutil.cpu_percent(interval=None)
-
-        try:
-            mem_after = process.memory_info().rss / (1024 * 1024)
-        except AttributeError:
-            mem_after = process.memory_full_info().rss / (1024 * 1024)
+        end = time.perf_counter()
+        after_resources = get_container_stats_raw(container)
 
         stats = {
             "operation": func.__name__,
-            "time_sec": end_time - start_time,
-            "cpu_percent": (cpu_after + cpu_before) / 2,
-            "mem_usage_mb": mem_after - mem_before,
+            "time_sec": end - start,
+            "cpu_percent": after_resources.get("cpu_percent"),
+            "mem_usage": max(after_resources.get("mem_usage") - before_resources.get("mem_usage"), 0),
             "records_amount": num_records,
             "db_metrics": db_metrics,
         }
@@ -87,6 +84,8 @@ def run_measurement(databases, records=1000, repeats=5):
 
         for op in dir(module):
             func = getattr(module, op, None)
+            if func == __doc__:
+                continue
             if not func:
                 print(f"Function {op} not found. Skipping...")
                 continue
@@ -99,10 +98,10 @@ def run_measurement(databases, records=1000, repeats=5):
                 stats = None
 
                 for _ in range(repeats):
-                    stats = func()
+                    stats = func(container=db_containers[db_name])
                     run_times.append(stats["time_sec"])
                     cpu_values.append(stats["cpu_percent"])
-                    ram_values.append(stats["mem_usage_mb"])
+                    ram_values.append(stats["mem_usage"])
 
                 results.append({
                     "database": db_name,

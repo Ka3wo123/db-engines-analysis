@@ -62,19 +62,19 @@ def create(records: int = 1000):
     conn.close()
 
 @measure_performance
-def read():
+def read(container):
     conn = connection()
     cur = conn.cursor()
     query = "SELECT * FROM users"
 
-    collect_metrics = run_metrics("postgresql", cur, query, "read")
+    collect_metrics = run_metrics("postgresql", cur, query)
 
     conn.close()
     return collect_metrics
 
 
 @measure_performance
-def join():
+def join(container):
     conn = connection()
     cur = conn.cursor()
 
@@ -84,7 +84,7 @@ def join():
         INNER JOIN transactions t 
         ON u.id = t.user_id       
     """
-    collect_metrics = run_metrics("postgresql", cur, query, "join")
+    collect_metrics = run_metrics("postgresql", cur, query)
 
     cur.close()
     conn.close()
@@ -93,14 +93,14 @@ def join():
 
 
 @measure_performance
-def aggregate():
+def aggregate(container):
     conn = connection()
     cursor = conn.cursor()
 
     query = """
             SELECT SUM(amount) FROM transactions;                                
         """
-    collect_metrics = run_metrics("postgresql", cursor, query, "aggregate")
+    collect_metrics = run_metrics("postgresql", cursor, query)
 
     cursor.close()
     conn.close()

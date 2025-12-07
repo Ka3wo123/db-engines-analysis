@@ -63,18 +63,47 @@ def create(records: int = 1000):
 
 
 @measure_performance
-def read():
+def read(container):
     conn = connection()
     cursor = conn.cursor()
     query = "SELECT * FROM users"
-    collect_metrics = run_metrics("mysql", cursor, query, "read")
+    collect_metrics = run_metrics("mysql", cursor, query)
     cursor.fetchall()
     conn.close()
 
     return collect_metrics
 
 @measure_performance
-def join():
+def read_one(container):
+    conn = connection()
+    cursor = conn.cursor()
+    query = "SELECT * FROM users WHERE email LIKE 'a%';"
+    collect_metrics = run_metrics("mysql", cursor, query)
+    cursor.fetchall()
+    conn.close()
+
+    return collect_metrics
+
+@measure_performance
+def read_with_indexes(container):
+    conn = connection()
+    cursor = conn.cursor()
+
+    cursor.execute("CREATE INDEX idx_users_email ON users (email);")
+    conn.commit()
+
+    query = "SELECT * FROM users WHERE email LIKE 'a%';"
+    collect_metrics = run_metrics("mysql", cursor, query)
+    cursor.fetchall()
+
+    cursor.execute("DROP INDEX idx_users_email ON users;")
+    conn.commit()
+    conn.close()
+
+    return collect_metrics
+
+@measure_performance
+def join(container):
     conn = connection()
     cursor = conn.cursor()
 
@@ -83,7 +112,7 @@ def join():
         FROM users u
         INNER JOIN transactions t ON u.id = t.user_id        
     """
-    collect_metrics = run_metrics("mysql", cursor, query, "join")
+    collect_metrics = run_metrics("mysql", cursor, query)
 
     cursor.close()
     conn.close()
@@ -91,14 +120,14 @@ def join():
     return collect_metrics
 
 @measure_performance
-def aggregate():
+def aggregate(container):
     conn = connection()
     cursor = conn.cursor()
 
     query = """
             SELECT SUM(amount) FROM transactions;                                
         """
-    collect_metrics = run_metrics("mysql", cursor, query, "aggregate")
+    collect_metrics = run_metrics("mysql", cursor, query)
 
     cursor.close()
     conn.close()
