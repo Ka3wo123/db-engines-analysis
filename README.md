@@ -47,6 +47,7 @@ All engines are run in Docker containers.
 - specifying options like `python3 main.py --records=1234` runs benchmarks with provided records amount (default is
   1000).
 - e.g. `python3 main.py postgresql --records=10` will run benchmarks on PostgreSQL with 10 records.
+- to exclude container resoruces retrieval add `--no-resources` flag
 
 > [!IMPORTANT]
 > Cassandra driver on Linux requires such steps in order to work:

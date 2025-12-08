@@ -1,12 +1,11 @@
 import importlib
 import json
-import time
 from functools import wraps
 from inspect import signature
 
 from openpyxl import Workbook
 
-from measurements.docker_helper import get_container_stats_raw
+from measurements.docker_helper import get_resources_peak
 
 db_modules = {
     "mysql": "measurements.sql.mysql.mysql_ops",
@@ -31,17 +30,23 @@ def measure_performance(func):
         num_records = kwargs.get("records", 1000)
         container = kwargs.get("container")
 
-        before_resources = get_container_stats_raw(container)
-        start = time.perf_counter()
+        if container is None:
+            db_metrics = func(*args, **kwargs, container=None)
+            return {
+                "operation": func.__name__,
+                "peak_cpu": 0,
+                "peak_ram": 0,
+                "records_amount": num_records,
+                "db_metrics": db_metrics,
+            }
+
+        peak_ram, peak_cpu = get_resources_peak(container)
         db_metrics = func(*args, **kwargs)
-        end = time.perf_counter()
-        after_resources = get_container_stats_raw(container)
 
         stats = {
             "operation": func.__name__,
-            "time_sec": end - start,
-            "cpu_percent": after_resources.get("cpu_percent"),
-            "mem_usage": max(after_resources.get("mem_usage") - before_resources.get("mem_usage"), 0),
+            "peak_cpu": peak_cpu,
+            "peak_ram": peak_ram,
             "records_amount": num_records,
             "db_metrics": db_metrics,
         }
@@ -55,7 +60,7 @@ def measure_performance(func):
     return wrapper
 
 
-def run_measurement(databases, records=1000, repeats=5):
+def run_measurement(databases, records=1000, repeats=5, no_stats=False):
     """
     For each database:
     1. Run DML create
@@ -92,24 +97,26 @@ def run_measurement(databases, records=1000, repeats=5):
             if callable(func) and getattr(func, "_is_measurable", False):
                 print(f"- Running {op}() for {repeats} repetitions...")
 
-                run_times = []
                 cpu_values = []
                 ram_values = []
                 stats = None
 
                 for _ in range(repeats):
-                    stats = func(container=db_containers[db_name])
-                    run_times.append(stats["time_sec"])
-                    cpu_values.append(stats["cpu_percent"])
-                    ram_values.append(stats["mem_usage"])
+                    if no_stats:
+                        stats = func()
+                        cpu_values.append(0)
+                        ram_values.append(0)
+                    else:
+                        stats = func(container=db_containers[db_name])
+                        cpu_values.append(stats["peak_cpu"])
+                        ram_values.append(stats["peak_ram"])
 
                 results.append({
                     "database": db_name,
                     "operation": op,
                     "records_amount": records,
-                    "time_sec": sum(run_times) / repeats,
-                    "cpu_percent": sum(cpu_values) / repeats,
-                    "mem_usage_mb": sum(ram_values) / repeats,
+                    "peak_cpu": sum(cpu_values) / repeats,
+                    "peak_ram": sum(ram_values) / repeats,
                     "db_raw": stats["db_metrics"]
                 })
 
@@ -127,15 +134,14 @@ def save_to_excel(results, filename="db_performance.xlsx"):
     ws = wb.active
     ws.title = "Performance"
 
-    ws.append(["Database", "Operation", "Time (s) (avg)", "CPU (%) (avg)", "RAM Change (MB) (avg)", "Records", "DB metrics"])
+    ws.append(["Database", "Operation", "CPU Peak (%) (avg)", "RAM Peak (MB) (avg)", "Records", "DB metrics"])
 
     for r in results:
         ws.append([
             r["database"],
             r["operation"],
-            round(r["time_sec"], 4),
-            round(r["cpu_percent"], 2),
-            round(r["mem_usage_mb"], 2),
+            round(r["peak_cpu"], 2),
+            round(r["peak_ram"], 2),
             r["records_amount"],
             json.dumps(r['db_raw'])
         ])
