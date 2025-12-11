@@ -31,12 +31,13 @@ def _cassandra_collect_metrics(session, query: str):
 
 def _neo4j_collect_metrics(driver_connection, query):
     with driver_connection.session() as session:
-        profile_result = session.run(f"PROFILE {query}")
-        list(profile_result)
-        summary = profile_result.consume().profile
-
+            result = session.run(query)
+            list(result) 
+            summary_object = result.consume()
+            server_time_ms = summary_object.result_available_after + summary_object.result_consumed_after
+            
     return {
-        "db_raw": summary
+        "db_raw": server_time_ms
     }
 
 

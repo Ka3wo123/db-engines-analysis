@@ -12,11 +12,15 @@ def get_resources_peak(container_name):
     duration = 5
 
     start = time.time()
-    for raw in container.stats(stream=True):
+    stats_stream = container.stats(stream=True)
+
+    next(stats_stream)
+
+    for raw in stats_stream:
         stats = json.loads(raw.decode("utf-8"))
         cpu = _calc_cpu_percent(stats)
         ram = stats["memory_stats"]["usage"] / (1024 ** 2)
-
+        #print(stats)
         peak_cpu = max(peak_cpu, cpu)
         peak_ram = max(peak_ram, ram)
 

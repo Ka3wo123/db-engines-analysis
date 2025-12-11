@@ -12,18 +12,18 @@ def load_and_plot(filename, output_dir="plots"):
 
     df = pd.read_excel(filename)
 
-    df["CPU (%) (avg)"] = df["CPU (%) (avg)"].astype(str).str.replace(",", ".").astype(float)
-    df["RAM Change (MB) (avg)"] = df["RAM Change (MB) (avg)"].astype(str).str.replace(",", ".").astype(float)
+    df["CPU Peak (%) (avg)"] = df["CPU Peak (%) (avg)"].astype(str).str.replace(",", ".").astype(float)
+    df["RAM Peak (MB) (avg)"] = df["RAM Peak (MB) (avg)"].astype(str).str.replace(",", ".").astype(float)
 
 
     plt.figure(figsize=(10, 6))
     for db in df["Database"].unique():
         subset = df[df["Database"] == db]
-        plt.plot(subset["Operation"], subset["CPU (%) (avg)"], marker="o", label=db)
+        plt.plot(subset["Operation"], subset["CPU Peak (%) (avg)"], marker="o", label=db)
 
     plt.title("CPU Usage by Database")
     plt.xlabel("Operation")
-    plt.ylabel("CPU (%) (avg)")
+    plt.ylabel("CPU Peak (%) (avg)")
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
@@ -32,11 +32,11 @@ def load_and_plot(filename, output_dir="plots"):
     plt.figure(figsize=(10, 6))
     for db in df["Database"].unique():
         subset = df[df["Database"] == db]
-        plt.plot(subset["Operation"], subset["RAM Change (MB) (avg)"], marker="o", label=db)
+        plt.plot(subset["Operation"], subset["RAM Peak (MB) (avg)"], marker="o", label=db)
 
     plt.title("RAM Change by Database")
     plt.xlabel("Operation")
-    plt.ylabel("RAM Change (MB)")
+    plt.ylabel("RAM Peak (MB) (avg)")
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
