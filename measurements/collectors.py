@@ -1,3 +1,4 @@
+import re
 def _postgres_collect_metrics(cur, query):
     explain_sql = f"EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) {query}"
     cur.execute(explain_sql)
@@ -6,16 +7,24 @@ def _postgres_collect_metrics(cur, query):
     execution_time = raw[0].get("Execution Time")
 
     return {
-        "db_raw": execution_time
+        "execution_time_ms": execution_time
     }
 
 
 def _mysql_collect_metrics(cur, query):
     cur.execute(f"EXPLAIN ANALYZE {query}")
-    raw = cur.fetchall()
+    rows = cur.fetchall()
+
+    execution_time_ms = None
+    pattern = re.compile(r"actual time=\d+\.\d+\.\.(\d+\.\d+)")
+
+    for row in rows:
+        match = pattern.search(row[0])
+        if match:
+            execution_time_ms = float(match.group(1))
 
     return {
-        "db_raw": raw
+        "execution_time_ms": execution_time_ms
     }
 
 
@@ -24,8 +33,11 @@ def _cassandra_collect_metrics(session, query: str):
     result = session.execute(stmt, trace=True)
     trace = result.get_query_trace()
 
+    # czas w mikrosekundach
+    execution_time_us = trace.duration
+
     return {
-        "db_raw": str(trace)
+        "execution_time_ms": execution_time_us / 1000
     }
 
 
@@ -37,7 +49,7 @@ def _neo4j_collect_metrics(driver_connection, query):
             server_time_ms = summary_object.result_available_after + summary_object.result_consumed_after
             
     return {
-        "db_raw": server_time_ms
+        "execution_time_ms": server_time_ms
     }
 
 

@@ -2,7 +2,7 @@ import importlib
 import json
 from functools import wraps
 from inspect import signature
-
+from datetime import timedelta
 from openpyxl import Workbook
 
 from measurements.docker_helper import get_resources_peak
@@ -53,6 +53,12 @@ def measure_performance(func):
 
         if db_metrics and isinstance(db_metrics, dict):
             stats.update(db_metrics)
+
+            
+            if isinstance(stats.get("execution_time_ms"), timedelta):
+                stats["execution_time_ms"] = (
+                    stats["execution_time_ms"].total_seconds() * 1000
+                )
         return stats
 
     wrapper._is_measurable = True
@@ -117,7 +123,7 @@ def run_measurement(databases, records=1000, repeats=5, no_stats=False):
                     "records_amount": records,
                     "peak_cpu": sum(cpu_values) / repeats,
                     "peak_ram": sum(ram_values) / repeats,
-                    "db_raw": stats["db_metrics"]
+                    "execution_time_ms": stats["execution_time_ms"]
                 })
 
         truncate_func = getattr(module, "truncate", None)
@@ -134,7 +140,7 @@ def save_to_excel(results, filename="db_performance.xlsx"):
     ws = wb.active
     ws.title = "Performance"
 
-    ws.append(["Database", "Operation", "CPU Peak (%) (avg)", "RAM Peak (MB) (avg)", "Records", "DB metrics"])
+    ws.append(["Database", "Operation", "CPU Peak (%) (avg)", "RAM Peak (MB) (avg)", "Records", "Execution Time (ms)"])
 
     for r in results:
         ws.append([
@@ -143,7 +149,7 @@ def save_to_excel(results, filename="db_performance.xlsx"):
             round(r["peak_cpu"], 2),
             round(r["peak_ram"], 2),
             r["records_amount"],
-            json.dumps(r['db_raw'])
+            round(r["execution_time_ms"], 3)
         ])
 
     wb.save(filename)
