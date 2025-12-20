@@ -107,27 +107,25 @@ def aggregate(container):
 
     return collect_metrics
 
-
-def update():
+@measure_performance
+def update(container):
     conn = connection()
     cur = conn.cursor()
     query = "UPDATE users SET name='Updated' WHERE id % 10 = 0"
 
-    cur.execute(query)
-
-    conn.commit()
+    metrics = run_metrics("postgresql", cur, query)
     conn.close()
+    return metrics
 
-
-def delete():
+@measure_performance
+def delete(container):
     conn = connection()
     cur = conn.cursor()
     query = "DELETE FROM users WHERE id % 10 = 5"
 
-    cur.execute(query)
-
-    conn.commit()
+    metrics = run_metrics("postgresql", cur, query)
     conn.close()
+    return metrics
 
 
 def truncate():
@@ -139,3 +137,59 @@ def truncate():
 
     conn.commit()
     conn.close()
+
+@measure_performance
+def read_fraud(container):
+    conn = connection()
+    cur = conn.cursor()
+    query = "SELECT * FROM transactions WHERE is_fraudulent = true"
+    metrics = run_metrics("postgresql", cur, query)
+    conn.close()
+    return metrics
+
+
+@measure_performance
+def read_amount_range(container):
+    conn = connection()
+    cur = conn.cursor()
+    query = "SELECT * FROM transactions WHERE amount > 100000"
+    metrics = run_metrics("postgresql", cur, query)
+    conn.close()
+    return metrics
+
+
+@measure_performance
+def read_fraud_and_amount(container):
+    conn = connection()
+    cur = conn.cursor()
+    query = """
+        SELECT * FROM transactions
+        WHERE is_fraudulent = true AND amount > 100000
+    """
+    metrics = run_metrics("postgresql", cur, query)
+    conn.close()
+    return metrics
+
+
+@measure_performance
+def group_by_country(container):
+    conn = connection()
+    cur = conn.cursor()
+    query = """
+        SELECT country, SUM(amount)
+        FROM transactions
+        GROUP BY country
+    """
+    metrics = run_metrics("postgresql", cur, query)
+    conn.close()
+    return metrics
+
+
+@measure_performance
+def distinct_users(container):
+    conn = connection()
+    cur = conn.cursor()
+    query = "SELECT COUNT(DISTINCT user_id) FROM transactions"
+    metrics = run_metrics("postgresql", cur, query)
+    conn.close()
+    return metrics

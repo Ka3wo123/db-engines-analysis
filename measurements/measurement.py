@@ -143,13 +143,14 @@ def save_to_excel(results, filename="db_performance.xlsx"):
     ws.append(["Database", "Operation", "CPU Peak (%) (avg)", "RAM Peak (MB) (avg)", "Records", "Execution Time (ms)"])
 
     for r in results:
+        execution_time = r.get("execution_time_ms")
         ws.append([
             r["database"],
             r["operation"],
-            round(r["peak_cpu"], 2),
-            round(r["peak_ram"], 2),
-            r["records_amount"],
-            round(r["execution_time_ms"], 3)
+            round(r.get("peak_cpu", 0), 2),
+            round(r.get("peak_ram", 0), 2),
+            r.get("records_amount", 0),
+            round(execution_time, 3) if execution_time is not None else None
         ])
 
     wb.save(filename)

@@ -134,21 +134,30 @@ def aggregate(container):
 
     return collect_metrics
 
-def update():
+@measure_performance
+def update(container):
     conn = connection()
     cursor = conn.cursor()
-    cursor.execute("UPDATE users SET name='Updated' WHERE id % 10 = 0")
-    conn.commit()
+    query= "UPDATE users SET name='Updated' WHERE id % 10 = 0"
+
+    collect_metrics = run_metrics("mysql", cursor, query)
+
+    cursor.close()
     conn.close()
 
+    return collect_metrics
 
-def delete():
+@measure_performance
+def delete(container):
     conn = connection()
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM users WHERE id % 10 = 0")
-    conn.commit()
-    conn.close()
+    query= "DELETE FROM users WHERE id % 10 = 0"
 
+    collect_metrics = run_metrics("mysql", cursor, query)
+
+    cursor.close()
+    conn.close()
+    return collect_metrics
 
 def truncate():
     conn = connection()
@@ -159,3 +168,64 @@ def truncate():
     cursor.execute("SET FOREIGN_KEY_CHECKS=1;")
     conn.commit()
     conn.close()
+
+@measure_performance
+def read_fraud(container):
+    conn = connection()
+    cursor = conn.cursor()
+    query = "SELECT * FROM transactions WHERE is_fraudulent = true"
+    metrics = run_metrics("mysql", cursor, query)
+    cursor.fetchall()
+    conn.close()
+    return metrics
+
+
+@measure_performance
+def read_amount_range(container):
+    conn = connection()
+    cursor = conn.cursor()
+    query = "SELECT * FROM transactions WHERE amount > 100000"
+    metrics = run_metrics("mysql", cursor, query)
+    cursor.fetchall()
+    conn.close()
+    return metrics
+
+
+@measure_performance
+def read_fraud_and_amount(container):
+    conn = connection()
+    cursor = conn.cursor()
+    query = """
+        SELECT * FROM transactions
+        WHERE is_fraudulent = true AND amount > 100000
+    """
+    metrics = run_metrics("mysql", cursor, query)
+    cursor.fetchall()
+    conn.close()
+    return metrics
+
+
+@measure_performance
+def group_by_country(container):
+    conn = connection()
+    cursor = conn.cursor()
+    query = """
+        SELECT country, SUM(amount)
+        FROM transactions
+        GROUP BY country
+    """
+    metrics = run_metrics("mysql", cursor, query)
+    cursor.fetchall()
+    conn.close()
+    return metrics
+
+
+@measure_performance
+def distinct_users(container):
+    conn = connection()
+    cursor = conn.cursor()
+    query = "SELECT COUNT(DISTINCT user_id) FROM transactions"
+    metrics = run_metrics("mysql", cursor, query)
+    cursor.fetchall()
+    conn.close()
+    return metrics

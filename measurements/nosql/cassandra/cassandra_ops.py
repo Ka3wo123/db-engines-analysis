@@ -62,7 +62,7 @@ def aggregate(container):
     return metrics
 
 
-def update():
+def update(container):
     session = connection()
     stmt = session.prepare("UPDATE transactions SET amount = ? WHERE id = ? IF EXISTS")
     rows = session.execute(SimpleStatement("SELECT id FROM transactions LIMIT 20"))
@@ -70,7 +70,7 @@ def update():
         session.execute(stmt, (1.00, row.id))
 
 
-def delete():
+def delete(container):
     session = connection()
     stmt = session.prepare("DELETE FROM transactions WHERE id = ?")
     rows = session.execute(SimpleStatement("SELECT id FROM transactions LIMIT 20"))
@@ -78,9 +78,62 @@ def delete():
     for row in rows:
         session.execute(stmt, (row.id,))
 
-
-def truncate():
+@measure_performance
+def truncate(container):
     session = connection()
-    session.execute("TRUNCATE TABLE transactions")
-    session.shutdown()
+    query = "TRUNCATE TABLE transactions"
+    return run_metrics("cassandra", session, query)
 
+
+@measure_performance
+def read_fraud(container):
+    session = connection()
+    query = """
+        SELECT * FROM transactions
+        WHERE is_fraudulent = true
+        ALLOW FILTERING
+    """
+    return run_metrics("cassandra", session, query)
+
+
+@measure_performance
+def read_amount_range(container):
+    session = connection()
+    query = """
+        SELECT * FROM transactions
+        WHERE amount > 100000
+        ALLOW FILTERING
+    """
+    return run_metrics("cassandra", session, query)
+
+
+@measure_performance
+def read_fraud_and_amount(container):
+    session = connection()
+    query = """
+        SELECT * FROM transactions
+        WHERE is_fraudulent = true AND amount > 100000
+        ALLOW FILTERING
+    """
+    return run_metrics("cassandra", session, query)
+
+
+#@measure_performance
+def group_by_country(container):
+    session = connection()
+    query = """
+        SELECT country, SUM(amount)
+        FROM transactions
+        GROUP BY country
+    """
+    return run_metrics("cassandra", session, query)
+
+
+#@measure_performance
+def distinct_users(container):
+    session = connection()
+    query = """
+        SELECT DISTINCT user_id
+        FROM transactions
+    """
+    return run_metrics("cassandra", session, query)
