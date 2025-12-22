@@ -1,4 +1,5 @@
 import argparse
+from collections import defaultdict
 
 from measurements.measurement import run_measurement, save_to_excel
 from measurements.plots import load_and_plot
@@ -13,14 +14,18 @@ if __name__ == "__main__":
         "--records", type=int, default=1000,
         help="data amount"
     )
-    parser.add_argument(
-        "--no-resources", action="store_true", help="exclude docker container resources retrieval"
-    )
 
     args = parser.parse_args()
 
     print(f"Databases that will be measured: {', '.join(args.databases)} with {args.records} records")
 
-    results = run_measurement(databases=args.databases, records=args.records, repeats=1, no_stats=args.no_resources)
-    save_to_excel(results)
-    load_and_plot("db_performance.xlsx")
+    results = run_measurement(databases=args.databases, records=args.records, repeats=3)
+
+    grouped = defaultdict(list)
+    for r in results:
+        grouped[r["operation"]].append(r)
+
+    for operation, op_results in grouped.items():
+        filename = f"{operation}_{args.records}.xlsx"
+        save_to_excel(op_results, filename)
+        load_and_plot(filename)

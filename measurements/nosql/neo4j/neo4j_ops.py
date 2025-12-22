@@ -70,41 +70,34 @@ def create(records: int = 1000):
             })
 
 
-@measure_performance
-def read(container):
+def update():
     driver = connection()
-    query = "MATCH (s:User)-[:MADE]->(t:Transaction)-[:TO]->(r:User) RETURN s, t, r"
-    metrics = run_metrics("neo4j", driver, query)
-    return metrics
-
-@measure_performance
-def update(container):
-    driver = connection()
-    query= """
+    query = """
         MATCH (t:Transaction)
         SET t.amount = t.amount * 1.05
         """
     return run_metrics("neo4j", driver, query)
 
-@measure_performance
-def delete(container):
+
+def delete():
     driver = connection()
     query = """
         MATCH (t:Transaction)
         WHERE t.amount > 100000
         DETACH DELETE t
         """
-    
+
     return run_metrics("neo4j", driver, query)
 
-@measure_performance
-def truncate(container):
+
+def truncate():
     driver = connection()
     query = "MATCH (n) DETACH DELETE n"
     return run_metrics("neo4j", driver, query)
 
+
 @measure_performance
-def read_fraud(container):
+def read_fraud():
     driver = connection()
     query = """
         MATCH (t:Transaction)
@@ -115,42 +108,12 @@ def read_fraud(container):
 
 
 @measure_performance
-def read_amount_range(container):
+def read_amount_range():
     driver = connection()
     query = """
         MATCH (t:Transaction)
-        WHERE t.amount > 100000
+        WHERE t.transferred_at >= datetime('2020-01-01T00:00:00')
+          AND t.transferred_at <= datetime('2020-12-31T23:59:59')
         RETURN t
-    """
-    return run_metrics("neo4j", driver, query)
-
-
-@measure_performance
-def read_fraud_and_amount(container):
-    driver = connection()
-    query = """
-        MATCH (t:Transaction)
-        WHERE t.is_fraudulent = true AND t.amount > 100000
-        RETURN t
-    """
-    return run_metrics("neo4j", driver, query)
-
-
-@measure_performance
-def group_by_country(container):
-    driver = connection()
-    query = """
-        MATCH (t:Transaction)
-        RETURN t.country, sum(t.amount)
-    """
-    return run_metrics("neo4j", driver, query)
-
-
-@measure_performance
-def distinct_users(container):
-    driver = connection()
-    query = """
-        MATCH (u:User)-[:MADE]->(:Transaction)
-        RETURN count(DISTINCT u)
     """
     return run_metrics("neo4j", driver, query)

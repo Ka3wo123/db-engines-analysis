@@ -40,7 +40,7 @@ def create(records: int = 1000):
 
     transactions = [
         (
-            faker.random_element(user_ids),  # pick a valid user_id
+            faker.random_element(user_ids),
             faker.pydecimal(positive=True, max_value=1_000_000, min_value=0.01, right_digits=2),
             faker.boolean(chance_of_getting_true=1),
             faker.date_time(),
@@ -61,84 +61,10 @@ def create(records: int = 1000):
     conn.commit()
     conn.close()
 
-
-@measure_performance
-def read(container):
+def update():
     conn = connection()
     cursor = conn.cursor()
-    query = "SELECT * FROM users"
-    collect_metrics = run_metrics("mysql", cursor, query)
-    cursor.fetchall()
-    conn.close()
-
-    return collect_metrics
-
-@measure_performance
-def read_one(container):
-    conn = connection()
-    cursor = conn.cursor()
-    query = "SELECT * FROM users WHERE email LIKE 'a%';"
-    collect_metrics = run_metrics("mysql", cursor, query)
-    cursor.fetchall()
-    conn.close()
-
-    return collect_metrics
-
-@measure_performance
-def read_with_indexes(container):
-    conn = connection()
-    cursor = conn.cursor()
-
-    cursor.execute("CREATE INDEX idx_users_email ON users (email);")
-    conn.commit()
-
-    query = "SELECT * FROM users WHERE email LIKE 'a%';"
-    collect_metrics = run_metrics("mysql", cursor, query)
-    cursor.fetchall()
-
-    cursor.execute("DROP INDEX idx_users_email ON users;")
-    conn.commit()
-    conn.close()
-
-    return collect_metrics
-
-@measure_performance
-def join(container):
-    conn = connection()
-    cursor = conn.cursor()
-
-    query = """
-        SELECT *
-        FROM users u
-        INNER JOIN transactions t ON u.id = t.user_id        
-    """
-    collect_metrics = run_metrics("mysql", cursor, query)
-
-    cursor.close()
-    conn.close()
-
-    return collect_metrics
-
-@measure_performance
-def aggregate(container):
-    conn = connection()
-    cursor = conn.cursor()
-
-    query = """
-            SELECT SUM(amount) FROM transactions;                                
-        """
-    collect_metrics = run_metrics("mysql", cursor, query)
-
-    cursor.close()
-    conn.close()
-
-    return collect_metrics
-
-@measure_performance
-def update(container):
-    conn = connection()
-    cursor = conn.cursor()
-    query= "UPDATE users SET name='Updated' WHERE id % 10 = 0"
+    query = "UPDATE users SET name='Updated' WHERE id % 10 = 0"
 
     collect_metrics = run_metrics("mysql", cursor, query)
 
@@ -147,17 +73,18 @@ def update(container):
 
     return collect_metrics
 
-@measure_performance
-def delete(container):
+
+def delete():
     conn = connection()
     cursor = conn.cursor()
-    query= "DELETE FROM users WHERE id % 10 = 0"
+    query = "DELETE FROM users WHERE id % 10 = 0"
 
     collect_metrics = run_metrics("mysql", cursor, query)
 
     cursor.close()
     conn.close()
     return collect_metrics
+
 
 def truncate():
     conn = connection()
@@ -170,7 +97,7 @@ def truncate():
     conn.close()
 
 @measure_performance
-def read_fraud(container):
+def read_fraud():
     conn = connection()
     cursor = conn.cursor()
     query = "SELECT * FROM transactions WHERE is_fraudulent = true"
@@ -181,7 +108,7 @@ def read_fraud(container):
 
 
 @measure_performance
-def read_amount_range(container):
+def read_amount_range():
     conn = connection()
     cursor = conn.cursor()
     query = "SELECT * FROM transactions WHERE amount > 100000"
@@ -192,7 +119,7 @@ def read_amount_range(container):
 
 
 @measure_performance
-def read_fraud_and_amount(container):
+def read_fraud_and_amount():
     conn = connection()
     cursor = conn.cursor()
     query = """
@@ -206,7 +133,7 @@ def read_fraud_and_amount(container):
 
 
 @measure_performance
-def group_by_country(container):
+def group_by_country():
     conn = connection()
     cursor = conn.cursor()
     query = """
@@ -221,11 +148,11 @@ def group_by_country(container):
 
 
 @measure_performance
-def distinct_users(container):
+def distinct_users():
     conn = connection()
     cursor = conn.cursor()
-    query = "SELECT COUNT(DISTINCT user_id) FROM transactions"
+    query = "SELECT * FROM transactions WHERE created_at BETWEEN '2020-01-01' AND '2020-12-31'"
     metrics = run_metrics("mysql", cursor, query)
-    cursor.fetchall()
+    cursor.close()
     conn.close()
     return metrics

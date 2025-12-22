@@ -61,54 +61,8 @@ def create(records: int = 1000):
     conn.commit()
     conn.close()
 
-@measure_performance
-def read(container):
-    conn = connection()
-    cur = conn.cursor()
-    query = "SELECT * FROM users"
 
-    collect_metrics = run_metrics("postgresql", cur, query)
-
-    conn.close()
-    return collect_metrics
-
-
-@measure_performance
-def join(container):
-    conn = connection()
-    cur = conn.cursor()
-
-    query = """
-        SELECT *
-        FROM users u
-        INNER JOIN transactions t 
-        ON u.id = t.user_id       
-    """
-    collect_metrics = run_metrics("postgresql", cur, query)
-
-    cur.close()
-    conn.close()
-
-    return collect_metrics
-
-
-@measure_performance
-def aggregate(container):
-    conn = connection()
-    cursor = conn.cursor()
-
-    query = """
-            SELECT SUM(amount) FROM transactions;                                
-        """
-    collect_metrics = run_metrics("postgresql", cursor, query)
-
-    cursor.close()
-    conn.close()
-
-    return collect_metrics
-
-@measure_performance
-def update(container):
+def update():
     conn = connection()
     cur = conn.cursor()
     query = "UPDATE users SET name='Updated' WHERE id % 10 = 0"
@@ -117,8 +71,8 @@ def update(container):
     conn.close()
     return metrics
 
-@measure_performance
-def delete(container):
+
+def delete():
     conn = connection()
     cur = conn.cursor()
     query = "DELETE FROM users WHERE id % 10 = 5"
@@ -139,7 +93,7 @@ def truncate():
     conn.close()
 
 @measure_performance
-def read_fraud(container):
+def read_fraud():
     conn = connection()
     cur = conn.cursor()
     query = "SELECT * FROM transactions WHERE is_fraudulent = true"
@@ -149,7 +103,7 @@ def read_fraud(container):
 
 
 @measure_performance
-def read_amount_range(container):
+def read_amount_range():
     conn = connection()
     cur = conn.cursor()
     query = "SELECT * FROM transactions WHERE amount > 100000"
@@ -159,7 +113,7 @@ def read_amount_range(container):
 
 
 @measure_performance
-def read_fraud_and_amount(container):
+def read_fraud_and_amount():
     conn = connection()
     cur = conn.cursor()
     query = """
@@ -172,7 +126,7 @@ def read_fraud_and_amount(container):
 
 
 @measure_performance
-def group_by_country(container):
+def group_by_country():
     conn = connection()
     cur = conn.cursor()
     query = """
@@ -186,7 +140,7 @@ def group_by_country(container):
 
 
 @measure_performance
-def distinct_users(container):
+def distinct_users():
     conn = connection()
     cur = conn.cursor()
     query = "SELECT COUNT(DISTINCT user_id) FROM transactions"

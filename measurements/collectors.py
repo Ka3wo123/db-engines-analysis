@@ -1,4 +1,6 @@
 import re
+
+
 def _postgres_collect_metrics(cur, query):
     explain_sql = f"EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) {query}"
     cur.execute(explain_sql)
@@ -33,7 +35,6 @@ def _cassandra_collect_metrics(session, query: str):
     result = session.execute(stmt, trace=True)
     trace = result.get_query_trace()
 
-    # czas w mikrosekundach
     execution_time_us = trace.duration
 
     return {
@@ -43,11 +44,11 @@ def _cassandra_collect_metrics(session, query: str):
 
 def _neo4j_collect_metrics(driver_connection, query):
     with driver_connection.session() as session:
-            result = session.run(query)
-            list(result) 
-            summary_object = result.consume()
-            server_time_ms = summary_object.result_available_after + summary_object.result_consumed_after
-            
+        result = session.run(query)
+        list(result)
+        summary_object = result.consume()
+        server_time_ms = summary_object.result_available_after + summary_object.result_consumed_after
+
     return {
         "execution_time_ms": server_time_ms
     }

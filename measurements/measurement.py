@@ -1,11 +1,10 @@
 import importlib
-import json
+import os.path
+from datetime import timedelta
 from functools import wraps
 from inspect import signature
-from datetime import timedelta
-from openpyxl import Workbook
 
-from measurements.docker_helper import get_resources_peak
+from openpyxl import Workbook
 
 db_modules = {
     "mysql": "measurements.sql.mysql.mysql_ops",
@@ -15,10 +14,10 @@ db_modules = {
 }
 
 db_containers = {
-    "mysql":"mysql",
-    "postgresql":"postgresql",
-    "cassandra":"cassandra",
-    "neo4j":"neo4j",
+    "mysql": "mysql",
+    "postgresql": "postgresql",
+    "cassandra": "cassandra",
+    "neo4j": "neo4j",
 }
 
 
@@ -28,25 +27,11 @@ def measure_performance(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         num_records = kwargs.get("records", 1000)
-        container = kwargs.get("container")
 
-        if container is None:
-            db_metrics = func(*args, **kwargs, container=None)
-            return {
-                "operation": func.__name__,
-                "peak_cpu": 0,
-                "peak_ram": 0,
-                "records_amount": num_records,
-                "db_metrics": db_metrics,
-            }
-
-        peak_ram, peak_cpu = get_resources_peak(container)
         db_metrics = func(*args, **kwargs)
 
         stats = {
             "operation": func.__name__,
-            "peak_cpu": peak_cpu,
-            "peak_ram": peak_ram,
             "records_amount": num_records,
             "db_metrics": db_metrics,
         }
@@ -54,10 +39,9 @@ def measure_performance(func):
         if db_metrics and isinstance(db_metrics, dict):
             stats.update(db_metrics)
 
-            
             if isinstance(stats.get("execution_time_ms"), timedelta):
                 stats["execution_time_ms"] = (
-                    stats["execution_time_ms"].total_seconds() * 1000
+                        stats["execution_time_ms"].total_seconds() * 1000
                 )
         return stats
 
@@ -66,7 +50,7 @@ def measure_performance(func):
     return wrapper
 
 
-def run_measurement(databases, records=1000, repeats=5, no_stats=False):
+def run_measurement(databases, records=1000, repeats=5):
     """
     For each database:
     1. Run DML create
@@ -103,27 +87,17 @@ def run_measurement(databases, records=1000, repeats=5, no_stats=False):
             if callable(func) and getattr(func, "_is_measurable", False):
                 print(f"- Running {op}() for {repeats} repetitions...")
 
-                cpu_values = []
-                ram_values = []
-                stats = None
+                execution_times = []
+                for repeat in range(repeats):
+                    stats = func()
+                    execution_times.append(stats["execution_time_ms"])
 
-                for _ in range(repeats):
-                    if no_stats:
-                        stats = func()
-                        cpu_values.append(0)
-                        ram_values.append(0)
-                    else:
-                        stats = func(container=db_containers[db_name])
-                        cpu_values.append(stats["peak_cpu"])
-                        ram_values.append(stats["peak_ram"])
-
+                mean_execution_time = sum(execution_times) / repeats
                 results.append({
                     "database": db_name,
                     "operation": op,
                     "records_amount": records,
-                    "peak_cpu": sum(cpu_values) / repeats,
-                    "peak_ram": sum(ram_values) / repeats,
-                    "execution_time_ms": stats["execution_time_ms"]
+                    "execution_time_ms": mean_execution_time
                 })
 
         truncate_func = getattr(module, "truncate", None)
@@ -140,18 +114,17 @@ def save_to_excel(results, filename="db_performance.xlsx"):
     ws = wb.active
     ws.title = "Performance"
 
-    ws.append(["Database", "Operation", "CPU Peak (%) (avg)", "RAM Peak (MB) (avg)", "Records", "Execution Time (ms)"])
+    ws.append(["Database", "Operation", "Records", "Execution Time (ms)"])
 
     for r in results:
         execution_time = r.get("execution_time_ms")
         ws.append([
             r["database"],
             r["operation"],
-            round(r.get("peak_cpu", 0), 2),
-            round(r.get("peak_ram", 0), 2),
             r.get("records_amount", 0),
             round(execution_time, 3) if execution_time is not None else None
         ])
 
-    wb.save(filename)
+    os.makedirs("results", exist_ok=True)
+    wb.save(os.path.join("./results/", filename))
     print(f"Results saved: {filename}")

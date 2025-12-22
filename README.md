@@ -57,3 +57,26 @@ All engines are run in Docker containers.
 # How to add new DQL to measure?
 1. In [nosql](measurements/nosql) or [sql](measurements/sql) directories there are python files. Add new function with DQL query for corresponding database.
 2. Annotate it with @measure_performance annotation.
+
+# Wnioski
+Cassandra
+- Tabele są denormalizowane
+- tabele są budowane pod zapytania
+- jest szybka w bulk-writes
+- nie ma joinów
+- horyzontalne skalowanie
+
+Neo4j
+- relacje są przechowywane jako wsakźniki - szybki traversal między powiązanymi danymi
+- brak joinów - idealny dla relacji
+- elastyczne schematy - dodawanie nowych typów relacji i właściwości
+- gorsza wydajność przy agregacjach na dużej ilości rekordów bez filtrów
+
+PostgreSQL
+- oferuje najbardziej zaawansowane funkcje SQL (indeksy częściowe, Full-Text Search)
+- optmalizacja zapytań - lepiej radzi sobie z analitycznymi zapytaniami i wieloma joinami
+
+MySQL
+- niska latencja w odczytach
+- mniej typów indeksów niż w PostgreSQL, gorzej radzi sobie z wieloma joinami
+- najlepszy gdy struktura danych jest określona i sztywna

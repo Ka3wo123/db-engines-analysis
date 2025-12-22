@@ -19,3 +19,11 @@ CREATE TABLE IF NOT EXISTS transactions (
     country TEXT,
     currency TEXT
 );
+
+CREATE TABLE IF NOT EXISTS user_hourly_spend (
+    user_id UUID,
+    hour timestamp,
+    total_amount counter,
+    PRIMARY KEY ((user_id), hour)
+) WITH CLUSTERING ORDER BY (hour ASC) ;
+

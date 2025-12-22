@@ -6,3 +6,4 @@ __pycache__
 *.xlsx
 .~lock.*.xlsx#
 plots/
+results/
