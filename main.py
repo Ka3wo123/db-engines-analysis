@@ -19,7 +19,7 @@ if __name__ == "__main__":
 
     print(f"Databases that will be measured: {', '.join(args.databases)} with {args.records} records")
 
-    results = run_measurement(databases=args.databases, records=args.records, repeats=6)
+    results = run_measurement(databases=args.databases, records=args.records, repeats=1)
 
     grouped = defaultdict(list)
     for r in results:

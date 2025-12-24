@@ -28,8 +28,9 @@ def create(records: int = 1000):
         session.run("CREATE INDEX user_id_index IF NOT EXISTS FOR (u:User) ON (u.id)")
         session.run("CREATE INDEX transaction_id_index IF NOT EXISTS FOR (t:Transaction) ON (t.id)")
 
+    print("Created indexes and constraints")
     data = []
-    batch_size = 1000
+    batch_size = 500
 
     for _ in range(records):
         data.append({
@@ -86,10 +87,11 @@ def create(records: int = 1000):
         MERGE (t)-[:TO]->(r)
         """
 
+    print("Batch insertion")
     with driver.session() as session:
         for i in range(0, records, batch_size):
             batch = data[i:i + batch_size]
-            session.run(cypher, batch=batch)
+            session.execute_write(lambda tx: tx.run(cypher, batch=batch))
 
 
 def update():
@@ -150,15 +152,16 @@ def read_amount_range():
 
 
 @measure_performance
-def read_amount_range():
+def read_date_range():
     """
     Find user IDs that made transactions in the first quarter of 2020
     """
     driver = connection()
     query = """
-        MATCH (t:Transaction)
-        WHERE t.amount > 500000
-        RETURN t        
+        MATCH (t:Transaction) 
+        WHERE t.transferred_at >= datetime("2020-01-01T00:00:00") 
+        AND t.transferred_at < datetime("2020-04-01T00:00:00") 
+        RETURN t       
     """
 
     return run_metrics("neo4j", driver, query)
