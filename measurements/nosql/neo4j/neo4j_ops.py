@@ -1,3 +1,4 @@
+import random
 import uuid
 
 from faker import Faker
@@ -15,59 +16,80 @@ def connection():
     return GraphDatabase.driver(uri, auth=(NEO4J_USER, NEO4J_PASSWORD))
 
 
+USER_POOL_SIZE = 1000
+USER_POOL = [str(uuid.uuid4()) for _ in range(USER_POOL_SIZE)]
+
+
 def create(records: int = 1000):
     driver = connection()
     with driver.session() as session:
-        for _ in range(records):
-            sender_id = str(uuid.uuid4())
-            receiver_id = str(uuid.uuid4())
-            transaction_id = str(uuid.uuid4())
+        session.run("CREATE CONSTRAINT IF NOT EXISTS FOR (u:User) REQUIRE u.id IS UNIQUE")
+        session.run("CREATE CONSTRAINT IF NOT EXISTS FOR (t:Transaction) REQUIRE t.id IS UNIQUE")
+        session.run("CREATE INDEX user_id_index IF NOT EXISTS FOR (u:User) ON (u.id)")
+        session.run("CREATE INDEX transaction_id_index IF NOT EXISTS FOR (t:Transaction) ON (t.id)")
 
-            session.run("""
-            MERGE (s:User {id: $sender_id})
-            ON CREATE SET s.name = $sender_name, s.email = $sender_email
-            
-            MERGE (r:User {id: $receiver_id})
-            ON CREATE SET r.name = $receiver_name, r.email = $receiver_email
-            
-            CREATE (t:Transaction {
-                id: $transaction_id,
-                amount: $amount,
-                currency: $currency,
-                transferred_at: datetime(),
-                is_fraudulent: $is_fraudulent,
-                receiver_ip_address: $receiver_ip_address,
-                sender_ip_address: $sender_ip_address,
-                browser_agent: $browser_agent,
-                device_id: $device_id,
-                device_type: $device_type,
-                bank_name: $bank_name,
-                bank_iban: $bank_iban,
-                country: $country
-            })
-            
-            MERGE (s)-[:MADE]->(t)
-            MERGE (t)-[:TO]->(r)                
-            """, {
-                "sender_id": sender_id,
-                "sender_name": faker.first_name(),
-                "sender_email": faker.email(),
-                "receiver_id": receiver_id,
-                "receiver_name": faker.first_name(),
-                "receiver_email": faker.email(),
-                "transaction_id": transaction_id,
-                "amount": float(faker.pydecimal(right_digits=2, positive=True, max_value=1_000_000, min_value=0.01)),
-                "currency": faker.currency()[0],
-                "is_fraudulent": faker.boolean(chance_of_getting_true=1),
-                "receiver_ip_address": faker.ipv4_public(),
-                "sender_ip_address": faker.ipv4_public(),
-                "browser_agent": faker.user_agent(),
-                "device_id": str(uuid.uuid4()),
-                "device_type": faker.random_element(['Mobile', 'Laptop', 'Desktop', 'Tablet']),
-                "bank_name": faker.company() + " Bank",
-                "bank_iban": faker.iban(),
-                "country": faker.country()
-            })
+    data = []
+    batch_size = 1000
+
+    for _ in range(records):
+        data.append({
+            "sender_id": random.choice(USER_POOL),
+            "sender_name": faker.first_name(),
+            "sender_email": faker.email(),
+
+            "receiver_id": random.choice(USER_POOL),
+            "receiver_name": faker.first_name(),
+            "receiver_email": faker.email(),
+
+            "transaction_id": str(uuid.uuid4()),
+            "amount": float(faker.pydecimal(right_digits=2, positive=True, max_value=1_000_000, min_value=0.01)),
+            "currency": faker.currency()[0],
+            "is_fraudulent": faker.boolean(chance_of_getting_true=1),
+            "receiver_ip_address": faker.ipv4_public(),
+            "sender_ip_address": faker.ipv4_public(),
+            "browser_agent": faker.user_agent(),
+            "device_id": str(uuid.uuid4()),
+            "device_type": faker.random_element(['Mobile', 'Laptop', 'Desktop', 'Tablet']),
+            "bank_name": faker.company() + " Bank",
+            "bank_iban": faker.iban(),
+            "country": faker.country()
+        })
+
+    cypher = """
+        UNWIND $batch AS row
+
+        MERGE (s:User {id: row.sender_id})
+          ON CREATE SET s.name = row.sender_name,
+                        s.email = row.sender_email
+
+        MERGE (r:User {id: row.receiver_id})
+          ON CREATE SET r.name = row.receiver_name,
+                        r.email = row.receiver_email
+
+        CREATE (t:Transaction {
+            id: row.transaction_id,
+            amount: row.amount,
+            currency: row.currency,
+            transferred_at: datetime(),
+            is_fraudulent: row.is_fraudulent,
+            receiver_ip_address: row.receiver_ip_address,
+            sender_ip_address: row.sender_ip_address,
+            browser_agent: row.browser_agent,
+            device_id: row.device_id,
+            device_type: row.device_type,
+            bank_name: row.bank_name,
+            bank_iban: row.bank_iban,
+            country: row.country
+        })
+
+        MERGE (s)-[:MADE]->(t)
+        MERGE (t)-[:TO]->(r)
+        """
+
+    with driver.session() as session:
+        for i in range(0, records, batch_size):
+            batch = data[i:i + batch_size]
+            session.run(cypher, batch=batch)
 
 
 def update():
@@ -97,23 +119,46 @@ def truncate():
 
 
 @measure_performance
-def read_fraud():
+def read_filter():
+    """
+    Find fraudulent transactions made on Mobile phones
+    """
     driver = connection()
     query = """
         MATCH (t:Transaction)
         WHERE t.is_fraudulent = true
+        AND t.device_type = 'Mobile'
         RETURN t
     """
+
     return run_metrics("neo4j", driver, query)
 
 
 @measure_performance
 def read_amount_range():
+    """
+    Find transactions that transactions amount were grater or equal to 500 000
+    """
     driver = connection()
     query = """
         MATCH (t:Transaction)
-        WHERE t.transferred_at >= datetime('2020-01-01T00:00:00')
-          AND t.transferred_at <= datetime('2020-12-31T23:59:59')
+        WHERE t.amount > 500000
         RETURN t
     """
+
+    return run_metrics("neo4j", driver, query)
+
+
+@measure_performance
+def read_amount_range():
+    """
+    Find user IDs that made transactions in the first quarter of 2020
+    """
+    driver = connection()
+    query = """
+        MATCH (t:Transaction)
+        WHERE t.amount > 500000
+        RETURN t        
+    """
+
     return run_metrics("neo4j", driver, query)

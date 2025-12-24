@@ -36,9 +36,10 @@ def _cassandra_collect_metrics(session, query: str):
     trace = result.get_query_trace()
 
     execution_time_us = trace.duration
+    execution_time_ms = execution_time_us.total_seconds() * 1_000.0
 
     return {
-        "execution_time_ms": execution_time_us / 1000
+        "execution_time_ms": execution_time_ms
     }
 
 

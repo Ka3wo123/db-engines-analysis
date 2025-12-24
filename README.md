@@ -60,17 +60,18 @@ All engines are run in Docker containers.
 
 # Wnioski
 Cassandra
-- Tabele są denormalizowane
-- tabele są budowane pod zapytania
-- jest szybka w bulk-writes
+- tabele są denormalizowane
+- nie tworzy się zapytań pod tabelę tylko tabele pod zapytania (pre-aggregated tables)
+- jest bardzo szybka w bulk-writes
 - nie ma joinów
-- horyzontalne skalowanie
+- horyzontalne skalowanie w klastrach
 
 Neo4j
 - relacje są przechowywane jako wsakźniki - szybki traversal między powiązanymi danymi
 - brak joinów - idealny dla relacji
 - elastyczne schematy - dodawanie nowych typów relacji i właściwości
 - gorsza wydajność przy agregacjach na dużej ilości rekordów bez filtrów
+- bulk writes - do tego potrzebne jest wsadowe wstawianie danych + indexy na własności relacji
 
 PostgreSQL
 - oferuje najbardziej zaawansowane funkcje SQL (indeksy częściowe, Full-Text Search)

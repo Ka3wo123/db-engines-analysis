@@ -4,7 +4,6 @@ import os
 
 
 def load_and_plot(filename, output_dir="plots"):
-    os.makedirs(output_dir, exist_ok=True)
     filename = os.path.join("./results", filename)
 
     if not os.path.exists(filename):
@@ -22,17 +21,21 @@ def load_and_plot(filename, output_dir="plots"):
         .astype(float)
     )
 
-    plt.figure(figsize=(10, 6))
     for operation in df["Operation"].unique():
-        plt.figure(figsize=(10, 6))
-
         subset = df[df["Operation"] == operation]
         records = subset["Records"].iloc[0]
 
-        plt.plot(
+        op_dir = os.path.join(output_dir, operation)
+        os.makedirs(op_dir, exist_ok=True)
+
+        # --- Plot ---
+        plt.figure(figsize=(10, 6))
+        plt.scatter(
             subset["Database"],
             subset["Execution Time (ms)"],
-            marker="o"
+            marker="o",
+            s=80,
+            c="red"
         )
 
         plt.title(f"Execution Time – {operation} ({records} records)")
@@ -41,8 +44,8 @@ def load_and_plot(filename, output_dir="plots"):
         plt.grid(True)
         plt.tight_layout()
 
-        filename = f"{operation}_{records}.png"
-        plt.savefig(os.path.join(output_dir, filename))
+        plot_filename = f"{operation}_{records}.png"
+        plt.savefig(os.path.join(op_dir, plot_filename))
         plt.close()
 
     print(f"Plots saved in: {output_dir}")

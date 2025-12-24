@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 
 from cassandra.cluster import Cluster
 from cassandra.query import SimpleStatement
@@ -18,75 +19,147 @@ def connection():
     return session
 
 
-def create(records: int = 1000):
-    session = connection()
+def amount_bucket(amount: float, bucket_size: int = 10000): return int(amount // bucket_size)
 
-    insert_tx = session.prepare("""
-        INSERT INTO transactions 
-        (id, user_id, amount, is_fraudulent, created_at, receiver_ip_address, sender_ip_address, browser_agent,
-         device_id, device_type, bank_name, bank_iban, country, currency)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """)
 
-    update_hourly = session.prepare("""
-        UPDATE user_hourly_spend
-        SET total_amount = total_amount + ?
-        WHERE user_id = ? AND hour = ?
-    """)
+def generate_fake_transaction(user_ids):
+    return {
+        "id": uuid.uuid4(),
+        "user_id": faker.random_element(user_ids),
+        "amount": Decimal(str(faker.pydecimal(positive=True, max_value=1_000_000,
+                                              min_value=0.01, right_digits=2))),
+        "is_fraudulent": faker.boolean(chance_of_getting_true=1),
+        "created_at": faker.date_time(),
+        "receiver_ip_address": faker.ipv4_public(),
+        "sender_ip_address": faker.ipv4_public(),
+        "browser_agent": faker.user_agent(),
+        "device_id": uuid.uuid4(),
+        "device_type": faker.random_element(['Mobile', 'Desktop', 'Laptop', 'Tablet']),
+        "bank_name": faker.company() + " Bank", "bank_iban": faker.iban(),
+        "country": faker.country(), "currency": faker.currency()[0]
+    }
 
-    for _ in range(records):
-        user_id = uuid.UUID(faker.uuid4())
-        created_at = faker.date_time()
-        hour_bucket = created_at.replace(minute=0, second=0, microsecond=0)
-        amount = int(
-            faker.pydecimal(
-                positive=True,
-                max_value=1_000_000,
-                min_value=0.01,
-                right_digits=2
-            ) * 100
+
+def insert_transaction(session, tx):
+    if not hasattr(session, "stmts"):
+        session.stmts = {}
+
+        session.stmts["transactions_by_user"] = session.prepare("""
+            INSERT INTO transactions_by_user (
+                user_id, created_at, id, amount, country, device_id, is_fraudulent
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """)
+
+        session.stmts["fraudulent_transactions"] = session.prepare("""
+            INSERT INTO fraudulent_transactions (
+                is_fraudulent, created_at, id, user_id, amount, country, device_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """)
+
+        session.stmts["transactions_by_amount_bucket"] = session.prepare("""
+            INSERT INTO transactions_by_amount_bucket (
+                amount_bucket, created_at, id, user_id, amount, is_fraudulent, country
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """)
+
+        session.stmts["transactions_by_country"] = session.prepare("""
+            INSERT INTO transactions_by_country (
+                country, created_at, id, user_id, amount, is_fraudulent
+            ) VALUES (?, ?, ?, ?, ?, ?)
+        """)
+
+        session.stmts["transactions_by_device"] = session.prepare("""
+            INSERT INTO transactions_by_device (
+                device_id, created_at, id, user_id, amount, is_fraudulent, country
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """)
+
+        session.stmts["transactions_by_user_hour"] = session.prepare("""
+            UPDATE transactions_by_user_hour
+            SET total_amount = total_amount + ?
+            WHERE user_id = ? AND hour = ?
+        """)
+
+        session.stmts["fraud_high_value"] = session.prepare("""
+            INSERT INTO fraud_high_value (
+                is_fraudulent, amount_bucket, created_at, id, user_id, amount, country
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """)
+
+        session.stmts["transactions_by_bank"] = session.prepare("""
+            INSERT INTO transactions_by_bank (
+                bank_name, created_at, id, user_id, amount, is_fraudulent, country
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        """)
+
+    # --- Execute prepared statements ---
+
+    # 1. transactions_by_user
+    session.execute(
+        session.stmts["transactions_by_user"],
+        (tx["user_id"], tx["created_at"], tx["id"], tx["amount"],
+         tx["country"], tx["device_id"], tx["is_fraudulent"])
+    )
+
+    # 2. fraudulent_transactions
+    session.execute(
+        session.stmts["fraudulent_transactions"],
+        (tx["is_fraudulent"], tx["created_at"], tx["id"], tx["user_id"],
+         tx["amount"], tx["country"], tx["device_id"])
+    )
+
+    # 3. transactions_by_amount_bucket
+    bucket = amount_bucket(int(tx["amount"]))
+    session.execute(
+        session.stmts["transactions_by_amount_bucket"],
+        (bucket, tx["created_at"], tx["id"], tx["user_id"],
+         tx["amount"], tx["is_fraudulent"], tx["country"])
+    )
+
+    # 4. transactions_by_country
+    session.execute(
+        session.stmts["transactions_by_country"],
+        (tx["country"], tx["created_at"], tx["id"], tx["user_id"],
+         tx["amount"], tx["is_fraudulent"])
+    )
+
+    # 5. transactions_by_device
+    session.execute(
+        session.stmts["transactions_by_device"],
+        (tx["device_id"], tx["created_at"], tx["id"], tx["user_id"],
+         tx["amount"], tx["is_fraudulent"], tx["country"])
+    )
+
+    # 6. transactions_by_user_hour (counter)
+    hour_bucket = tx["created_at"].replace(minute=0, second=0, microsecond=0)
+    session.execute(
+        session.stmts["transactions_by_user_hour"],
+        (int(tx["amount"]), tx["user_id"], hour_bucket)
+    )
+
+    # 7. fraud_high_value (only if fraudulent)
+    if tx["is_fraudulent"]:
+        session.execute(
+            session.stmts["fraud_high_value"],
+            (True, bucket, tx["created_at"], tx["id"], tx["user_id"],
+             tx["amount"], tx["country"])
         )
 
-        session.execute(insert_tx, (
-            uuid.UUID(faker.uuid4()),
-            user_id,
-            amount,
-            faker.boolean(chance_of_getting_true=1),
-            created_at,
-            faker.ipv4_public(),
-            faker.ipv4_public(),
-            faker.user_agent(),
-            uuid.UUID(faker.uuid4()),
-            faker.random_element(['Mobile', 'Desktop', 'Laptop', 'Tablet']),
-            faker.company() + " Bank",
-            faker.iban(),
-            faker.country(),
-            faker.currency()[0]
-        ))
-
-        session.execute(update_hourly, (
-            amount,
-            user_id,
-            hour_bucket
-        ))
+    # 8. transactions_by_bank
+    session.execute(
+        session.stmts["transactions_by_bank"],
+        (tx["bank_name"], tx["created_at"], tx["id"], tx["user_id"],
+         tx["amount"], tx["is_fraudulent"], tx["country"])
+    )
 
 
-def update():
+def create(records: int = 1000):
     session = connection()
-    stmt = session.prepare("UPDATE transactions SET amount = ? WHERE id = ? IF EXISTS")
-    rows = session.execute(SimpleStatement("SELECT id FROM transactions LIMIT 20"))
-    for row in rows:
-        session.execute(stmt, (1.00, row.id))
+    user_ids = [uuid.uuid4() for _ in range(100)]
 
-
-def delete():
-    session = connection()
-    stmt = session.prepare("DELETE FROM transactions WHERE id = ?")
-    rows = session.execute(SimpleStatement("SELECT id FROM transactions LIMIT 20"))
-
-    for row in rows:
-        session.execute(stmt, (row.id,))
-
+    for _ in range(records):
+        tx = generate_fake_transaction(user_ids)
+        insert_transaction(session, tx)
 
 def truncate():
     session = connection()
@@ -95,54 +168,87 @@ def truncate():
 
 
 @measure_performance
+def read_by_user():
+    session = connection()
+    user_id = uuid.uuid4()
+    query = f"""
+        SELECT * FROM transactions_by_user
+        WHERE user_id = {user_id}
+    """
+    return run_metrics("cassandra", session, query)
+
+
+@measure_performance
 def read_fraud():
     session = connection()
     query = """
-        SELECT * FROM transactions
+        SELECT * FROM fraudulent_transactions
         WHERE is_fraudulent = true
-        ALLOW FILTERING
     """
     return run_metrics("cassandra", session, query)
 
 
 @measure_performance
-def read_amount_range():
+def read_high_value():
     session = connection()
-    query = """
-        SELECT * FROM transactions
-        WHERE amount > 100000
-        ALLOW FILTERING
+    bucket = amount_bucket(100000)
+    query = f"""
+        SELECT * FROM transactions_by_amount_bucket
+        WHERE amount_bucket = {bucket}
     """
     return run_metrics("cassandra", session, query)
 
 
 @measure_performance
-def read_fraud_and_amount():
+def read_by_country():
     session = connection()
-    query = """
-        SELECT * FROM transactions
-        WHERE is_fraudulent = true AND amount > 100000
-        ALLOW FILTERING
+    country = "Russia"
+    query = f"""
+        SELECT * FROM transactions_by_country
+        WHERE country = '{country}'
     """
     return run_metrics("cassandra", session, query)
 
 
-# @measure_performance
-def group_by_country():
+@measure_performance
+def read_by_device():
     session = connection()
-    query = """
-        SELECT country, SUM(amount)
-        FROM transactions
-        GROUP BY country
+    device_id = uuid.uuid4()
+    query = f"""
+        SELECT * FROM transactions_by_device
+        WHERE device_id = {device_id}
     """
     return run_metrics("cassandra", session, query)
 
 
-# @measure_performance
-def distinct_users():
+@measure_performance
+def read_fraud_high_value():
     session = connection()
-    query = """
-        SELECT DISTINCT user_id
-        FROM transactions
+    bucket = amount_bucket(100000)
+    query = f"""
+        SELECT * FROM fraud_high_value
+        WHERE is_fraudulent = true AND amount_bucket = {bucket}
+    """
+    return run_metrics("cassandra", session, query)
+
+
+@measure_performance
+def aggregate_by_country():
+    session = connection()
+    country = "Russia"
+    query = f"""
+        SELECT amount FROM transactions_by_country
+        WHERE country = '{country}'
+    """
+    return run_metrics("cassandra", session, query)
+
+
+@measure_performance
+def read_hourly_user_stats():
+    session = connection()
+    user_id = uuid.uuid4()
+    query = f"""
+        SELECT * FROM transactions_by_user_hour
+        WHERE user_id = {user_id}
     """
     return run_metrics("cassandra", session, query)

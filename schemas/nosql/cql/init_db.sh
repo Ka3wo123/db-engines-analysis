@@ -11,7 +11,7 @@ done
 
 KEYSPACE=${CASSANDRA_KEYSPACE:-default_keyspace}
 
-sed "s|{{KEYSPACE}}|${KEYSPACE}|g" /cql-init/create_keyspace_and_transactions.cql.template > /schema.cql
+sed "s|{{KEYSPACE}}|${KEYSPACE}|g" /cql-init/create_tables.cql.template > /schema.cql
 
 echo "Applying schema for keyspace: $KEYSPACE"
 cqlsh cassandra -f /schema.cql

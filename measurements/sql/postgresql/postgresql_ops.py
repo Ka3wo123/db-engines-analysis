@@ -93,10 +93,13 @@ def truncate():
     conn.close()
 
 @measure_performance
-def read_fraud():
+def read_filter():
+    """
+    Find user IDs that made fraudulent transactions on Mobile phones
+    """
     conn = connection()
     cur = conn.cursor()
-    query = "SELECT * FROM transactions WHERE is_fraudulent = true"
+    query = "SELECT user_id FROM transactions WHERE device_type = 'Mobile' AND is_fraudulent = true"
     metrics = run_metrics("postgresql", cur, query)
     conn.close()
     return metrics
@@ -104,46 +107,25 @@ def read_fraud():
 
 @measure_performance
 def read_amount_range():
-    conn = connection()
-    cur = conn.cursor()
-    query = "SELECT * FROM transactions WHERE amount > 100000"
-    metrics = run_metrics("postgresql", cur, query)
-    conn.close()
-    return metrics
-
-
-@measure_performance
-def read_fraud_and_amount():
-    conn = connection()
-    cur = conn.cursor()
-    query = """
-        SELECT * FROM transactions
-        WHERE is_fraudulent = true AND amount > 100000
     """
-    metrics = run_metrics("postgresql", cur, query)
-    conn.close()
-    return metrics
-
-
-@measure_performance
-def group_by_country():
-    conn = connection()
-    cur = conn.cursor()
-    query = """
-        SELECT country, SUM(amount)
-        FROM transactions
-        GROUP BY country
+    Find user IDs that transfer amount was greater or equal to 500 000
     """
-    metrics = run_metrics("postgresql", cur, query)
+    conn = connection()
+    cursor = conn.cursor()
+    query = "SELECT user_id FROM transactions WHERE amount >= 500000"
+    metrics = run_metrics("postgresql", cursor, query)
     conn.close()
     return metrics
 
 
 @measure_performance
-def distinct_users():
+def read_date_range():
+    """
+    Find user IDs that made transactions in the first quarter of 2020
+    """
     conn = connection()
-    cur = conn.cursor()
-    query = "SELECT COUNT(DISTINCT user_id) FROM transactions"
-    metrics = run_metrics("postgresql", cur, query)
+    cursor = conn.cursor()
+    query = "SELECT user_id FROM transactions WHERE created_at BETWEEN '2020-01-01' AND '2020-03-31'"
+    metrics = run_metrics("postgresql", cursor, query)
     conn.close()
     return metrics

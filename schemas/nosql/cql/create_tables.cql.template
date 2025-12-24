@@ -1,0 +1,91 @@
+CREATE KEYSPACE IF NOT EXISTS {{KEYSPACE}}
+WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+
+USE {{KEYSPACE}};
+
+CREATE TABLE IF NOT EXISTS transactions_by_user (
+    user_id UUID,
+    created_at TIMESTAMP,
+    id UUID,
+    amount DECIMAL,
+    is_fraudulent BOOLEAN,
+    country TEXT,
+    device_id UUID,
+    PRIMARY KEY ((user_id), created_at, id)
+) WITH CLUSTERING ORDER BY (created_at DESC);
+
+
+CREATE TABLE IF NOT EXISTS fraudulent_transactions (
+    is_fraudulent BOOLEAN,
+    created_at TIMESTAMP,
+    id UUID,
+    user_id UUID,
+    amount DECIMAL,
+    country TEXT,
+    device_id UUID,
+    PRIMARY KEY ((is_fraudulent), created_at, id)
+) WITH CLUSTERING ORDER BY (created_at DESC);
+
+
+CREATE TABLE IF NOT EXISTS transactions_by_amount_bucket (
+    amount_bucket INT,
+    created_at TIMESTAMP,
+    id UUID,
+    user_id UUID,
+    amount DECIMAL,
+    is_fraudulent BOOLEAN,
+    country TEXT,
+    PRIMARY KEY ((amount_bucket), created_at, id)
+) WITH CLUSTERING ORDER BY (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS transactions_by_country (
+    country TEXT,
+    created_at TIMESTAMP,
+    id UUID,
+    user_id UUID,
+    amount DECIMAL,
+    is_fraudulent BOOLEAN,
+    PRIMARY KEY ((country), created_at, id)
+) WITH CLUSTERING ORDER BY (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS transactions_by_device (
+    device_id UUID,
+    created_at TIMESTAMP,
+    id UUID,
+    user_id UUID,
+    amount DECIMAL,
+    is_fraudulent BOOLEAN,
+    country TEXT,
+    PRIMARY KEY ((device_id), created_at, id)
+) WITH CLUSTERING ORDER BY (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS transactions_by_user_hour (
+    user_id UUID,
+    hour TIMESTAMP,
+    total_amount COUNTER,
+    PRIMARY KEY ((user_id), hour)
+) WITH CLUSTERING ORDER BY (hour ASC);
+
+CREATE TABLE IF NOT EXISTS fraud_high_value (
+    is_fraudulent BOOLEAN,
+    amount_bucket INT,
+    created_at TIMESTAMP,
+    id UUID,
+    user_id UUID,
+    amount DECIMAL,
+    country TEXT,
+    PRIMARY KEY ((is_fraudulent, amount_bucket), created_at, id)
+) WITH CLUSTERING ORDER BY (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS transactions_by_bank (
+    bank_name TEXT,
+    created_at TIMESTAMP,
+    id UUID,
+    user_id UUID,
+    amount DECIMAL,
+    is_fraudulent BOOLEAN,
+    country TEXT,
+    PRIMARY KEY ((bank_name), created_at, id)
+) WITH CLUSTERING ORDER BY (created_at DESC);
+
+

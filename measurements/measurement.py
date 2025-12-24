@@ -22,7 +22,7 @@ db_containers = {
 
 
 def measure_performance(func):
-    """CPU, RAM and execution time measurement decorator DQL operations for any database"""
+    """Execution time measurement decorator DQL operations for any database"""
 
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -117,12 +117,11 @@ def save_to_excel(results, filename="db_performance.xlsx"):
     ws.append(["Database", "Operation", "Records", "Execution Time (ms)"])
 
     for r in results:
-        execution_time = r.get("execution_time_ms")
         ws.append([
-            r["database"],
-            r["operation"],
+            r.get("database", None),
+            r.get("operation", None),
             r.get("records_amount", 0),
-            round(execution_time, 3) if execution_time is not None else None
+            r.get("execution_time_ms", 0)
         ])
 
     os.makedirs("results", exist_ok=True)

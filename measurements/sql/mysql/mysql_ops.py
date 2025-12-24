@@ -18,7 +18,6 @@ def connection():
         database=MYSQL_DATABASE
     )
 
-
 def create(records: int = 1000):
     conn = connection()
     cur = conn.cursor()
@@ -61,6 +60,8 @@ def create(records: int = 1000):
     conn.commit()
     conn.close()
 
+
+
 def update():
     conn = connection()
     cursor = conn.cursor()
@@ -97,10 +98,13 @@ def truncate():
     conn.close()
 
 @measure_performance
-def read_fraud():
+def read_filter():
+    """
+    Find user IDs that made fraudulent transactions on Mobile phones
+    """
     conn = connection()
     cursor = conn.cursor()
-    query = "SELECT * FROM transactions WHERE is_fraudulent = true"
+    query = "SELECT user_id FROM transactions WHERE device_type = 'Mobile' AND is_fraudulent = true"
     metrics = run_metrics("mysql", cursor, query)
     cursor.fetchall()
     conn.close()
@@ -109,38 +113,12 @@ def read_fraud():
 
 @measure_performance
 def read_amount_range():
-    conn = connection()
-    cursor = conn.cursor()
-    query = "SELECT * FROM transactions WHERE amount > 100000"
-    metrics = run_metrics("mysql", cursor, query)
-    cursor.fetchall()
-    conn.close()
-    return metrics
-
-
-@measure_performance
-def read_fraud_and_amount():
-    conn = connection()
-    cursor = conn.cursor()
-    query = """
-        SELECT * FROM transactions
-        WHERE is_fraudulent = true AND amount > 100000
     """
-    metrics = run_metrics("mysql", cursor, query)
-    cursor.fetchall()
-    conn.close()
-    return metrics
-
-
-@measure_performance
-def group_by_country():
-    conn = connection()
-    cursor = conn.cursor()
-    query = """
-        SELECT country, SUM(amount)
-        FROM transactions
-        GROUP BY country
+    Find user IDs that transfer amount was greater or equal to 500 000
     """
+    conn = connection()
+    cursor = conn.cursor()
+    query = "SELECT user_id FROM transactions WHERE amount >= 500000"
     metrics = run_metrics("mysql", cursor, query)
     cursor.fetchall()
     conn.close()
@@ -148,11 +126,14 @@ def group_by_country():
 
 
 @measure_performance
-def distinct_users():
+def read_date_range():
+    """
+    Find user IDs that made transactions in the first quarter of 2020
+    """
     conn = connection()
     cursor = conn.cursor()
-    query = "SELECT * FROM transactions WHERE created_at BETWEEN '2020-01-01' AND '2020-12-31'"
+    query = "SELECT user_id FROM transactions WHERE created_at BETWEEN '2020-01-01' AND '2020-03-31'"
     metrics = run_metrics("mysql", cursor, query)
-    cursor.close()
+    cursor.fetchall()
     conn.close()
     return metrics
