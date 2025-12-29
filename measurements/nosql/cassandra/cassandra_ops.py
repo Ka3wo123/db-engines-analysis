@@ -160,12 +160,12 @@ def create(records: int = 1000):
     for _ in range(records):
         tx = generate_fake_transaction(user_ids)
         insert_transaction(session, tx)
-
+'''
 def truncate():
     session = connection()
     query = "TRUNCATE TABLE transactions"
     return run_metrics("cassandra", session, query)
-
+'''
 
 @measure_performance
 def read_by_user():

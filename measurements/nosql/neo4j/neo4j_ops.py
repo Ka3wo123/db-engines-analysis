@@ -165,3 +165,106 @@ def read_date_range():
     """
 
     return run_metrics("neo4j", driver, query)
+
+@measure_performance
+def read_by_user():
+    driver = connection()
+    user_id = USER_POOL[0]
+
+    query = f"""
+        MATCH (u:User {{id: '{user_id}'}})-[:MADE]->(t:Transaction)
+        RETURN t
+    """
+
+    return run_metrics("neo4j", driver, query)
+
+@measure_performance
+def read_fraud():
+    driver = connection()
+
+    query = """
+        MATCH (t:Transaction)
+        WHERE t.is_fraudulent = true
+        RETURN t
+    """
+
+    return run_metrics("neo4j", driver, query)
+
+@measure_performance
+def read_high_value():
+    driver = connection()
+
+    query = """
+        MATCH (t:Transaction)
+        WHERE t.amount >= 100000
+        RETURN t
+    """
+
+    return run_metrics("neo4j", driver, query)
+
+@measure_performance
+def read_by_country():
+    driver = connection()
+    country = "Russia"
+
+    query = f"""
+        MATCH (t:Transaction)
+        WHERE t.country = '{country}'
+        RETURN t
+    """
+
+    return run_metrics("neo4j", driver, query)
+
+@measure_performance
+def read_by_device():
+    driver = connection()
+    device_type = "Mobile"
+
+    query = f"""
+        MATCH (t:Transaction)
+        WHERE t.device_type = '{device_type}'
+        RETURN t
+    """
+
+    return run_metrics("neo4j", driver, query)
+
+@measure_performance
+def read_fraud_high_value():
+    driver = connection()
+
+    query = """
+        MATCH (t:Transaction)
+        WHERE t.is_fraudulent = true
+        AND t.amount >= 100000
+        RETURN t
+    """
+
+    return run_metrics("neo4j", driver, query)
+
+@measure_performance
+def aggregate_by_country():
+    driver = connection()
+    country = "Russia"
+
+    query = f"""
+        MATCH (t:Transaction)
+        WHERE t.country = '{country}'
+        RETURN sum(t.amount) AS total_amount
+    """
+
+    return run_metrics("neo4j", driver, query)
+
+@measure_performance
+def read_hourly_user_stats():
+    driver = connection()
+    user_id = USER_POOL[0]
+
+    query = f"""
+        MATCH (u:User {{id: '{user_id}'}})-[:MADE]->(t:Transaction)
+        RETURN
+            datetime.truncate('hour', t.transferred_at) AS hour,
+            sum(t.amount) AS total_amount
+        ORDER BY hour
+    """
+
+    return run_metrics("neo4j", driver, query)

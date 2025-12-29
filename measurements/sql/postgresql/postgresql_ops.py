@@ -129,3 +129,135 @@ def read_date_range():
     metrics = run_metrics("postgresql", cursor, query)
     conn.close()
     return metrics
+
+@measure_performance
+def read_by_user():
+    conn = connection()
+    cursor = conn.cursor()
+    user_id = 1
+
+    query = f"""
+        SELECT *
+        FROM transactions
+        WHERE user_id = {user_id}
+    """
+
+    metrics = run_metrics("postgresql", cursor, query)
+    conn.close()
+    return metrics
+
+@measure_performance
+def read_fraud():
+    conn = connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT *
+        FROM transactions
+        WHERE is_fraudulent = true
+    """
+
+    metrics = run_metrics("postgresql", cursor, query)
+    conn.close()
+    return metrics
+
+@measure_performance
+def read_high_value():
+    conn = connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT *
+        FROM transactions
+        WHERE amount >= 100000
+    """
+
+    metrics = run_metrics("postgresql", cursor, query)
+    conn.close()
+    return metrics
+
+@measure_performance
+def read_by_country():
+    conn = connection()
+    cursor = conn.cursor()
+    country = "Russia"
+
+    query = f"""
+        SELECT *
+        FROM transactions
+        WHERE country = '{country}'
+    """
+
+    metrics = run_metrics("postgresql", cursor, query)
+    conn.close()
+    return metrics
+
+@measure_performance
+def read_by_device():
+    conn = connection()
+    cursor = conn.cursor()
+    device_type = "Mobile"
+
+    query = f"""
+        SELECT *
+        FROM transactions
+        WHERE device_type = '{device_type}'
+    """
+
+    metrics = run_metrics("postgresql", cursor, query)
+    conn.close()
+    return metrics
+
+@measure_performance
+def read_fraud_high_value():
+    conn = connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT *
+        FROM transactions
+        WHERE is_fraudulent = true
+          AND amount >= 100000
+    """
+
+    metrics = run_metrics("postgresql", cursor, query)
+    conn.close()
+    return metrics
+
+@measure_performance
+def aggregate_by_country():
+    conn = connection()
+    cursor = conn.cursor()
+    country = "Russia"
+
+    query = f"""
+        SELECT SUM(amount)
+        FROM transactions
+        WHERE country = '{country}'
+    """
+
+    metrics = run_metrics("postgresql", cursor, query)
+    conn.close()
+    return metrics
+
+@measure_performance
+def read_hourly_user_stats():
+    conn = connection()
+    cursor = conn.cursor()
+    user_id = 1
+
+    query = f"""
+        SELECT
+            user_id,
+            date_trunc('hour', created_at) AS hour,
+            SUM(amount) AS total_amount
+        FROM transactions
+        WHERE user_id = {user_id}
+        GROUP BY user_id, hour
+        ORDER BY hour
+    """
+
+    metrics = run_metrics("postgresql", cursor, query)
+    conn.close()
+    return metrics
+
