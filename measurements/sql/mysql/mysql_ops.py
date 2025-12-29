@@ -2,7 +2,7 @@ import uuid
 
 import mysql.connector
 from faker import Faker
-
+import os
 from measurements.collectors import run_metrics
 from measurements.db_config import MYSQL_USER, MYSQL_PASSWORD, MYSQL_DATABASE
 from measurements.measurement import measure_performance
@@ -15,51 +15,32 @@ def connection():
         host='localhost',
         user=MYSQL_USER,
         password=MYSQL_PASSWORD,
-        database=MYSQL_DATABASE
+        database=MYSQL_DATABASE,
+        allow_local_infile=True
     )
 
-def create(records: int = 1000):
+def load_dataset(records):
     conn = connection()
     cur = conn.cursor()
 
-    user_query = "INSERT INTO users (name, surname, email) VALUES (%s, %s, %s)"
-    users = [(faker.first_name(), faker.last_name(), faker.email()) for _ in range(records)]
-    cur.executemany(user_query, users)
+    cur.execute("SET FOREIGN_KEY_CHECKS=0")
 
-    cur.execute("SELECT id FROM users ORDER BY id DESC LIMIT %s", (records,))
-    user_ids = [row[0] for row in cur.fetchall()]
+    cur.execute(f"""
+        LOAD DATA LOCAL INFILE 'datasets/users.csv'
+        INTO TABLE users
+        FIELDS TERMINATED BY ','
+        IGNORE 1 ROWS
+    """)
 
-    transaction_query = """
-           INSERT INTO transactions 
-           (user_id, amount, is_fraudulent, created_at, receiver_ip_address,
-            sender_ip_address, browser_agent, device_id, device_type,
-            bank_name, bank_iban, country, currency) 
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-       """
+    cur.execute(f"""
+        LOAD DATA LOCAL INFILE 'datasets/transactions.csv'
+        INTO TABLE transactions
+        FIELDS TERMINATED BY ','
+        IGNORE 1 ROWS
+    """)
 
-    transactions = [
-        (
-            faker.random_element(user_ids),
-            faker.pydecimal(positive=True, max_value=1_000_000, min_value=0.01, right_digits=2),
-            faker.boolean(chance_of_getting_true=1),
-            faker.date_time(),
-            faker.ipv4_public(),
-            faker.ipv4_public(),
-            faker.user_agent(),
-            str(uuid.uuid4()),
-            faker.random_element(['Mobile', 'Desktop', 'Laptop', 'Tablet']),
-            faker.company() + " Bank",
-            faker.iban(),
-            faker.country(),
-            faker.currency()[0]
-        )
-        for _ in range(records)
-    ]
-
-    cur.executemany(transaction_query, transactions)
     conn.commit()
     conn.close()
-
 
 
 def update():

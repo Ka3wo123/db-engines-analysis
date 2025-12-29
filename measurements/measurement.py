@@ -67,14 +67,14 @@ def run_measurement(databases, records=1000, repeats=5):
         module = importlib.import_module(db_modules[db_name])
         print(f"\n=== Running benchmarks for {db_name.upper()} ===")
 
-        create_func = getattr(module, "create", None)
-        if create_func:
+        load_dataset = getattr(module, "load_dataset", None)
+        if load_dataset:
             print(f"Creating records for {db_name.upper()}...", end='')
-            sig = signature(create_func)
+            sig = signature(load_dataset)
             if "records" in sig.parameters:
-                create_func(records=records)
+                load_dataset(records=records)
             else:
-                create_func()
+                load_dataset()
             print("Finished.")
 
         for op in dir(module):
